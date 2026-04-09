@@ -48,18 +48,37 @@ const log = (...args) => console.log(`[ATOM] ${new Date().toISOString()}`, ...ar
 const activeCalls = new Map();
 const activeCampaigns = new Map();
 
-// ─── Mulaw codec (precomputed decode table) ──────────────────────────────────
+// ─── Mulaw codec (precomputed lookup tables — zero-overhead encode/decode) ────
+const MULAW_BIAS = 0x84;
+const MULAW_CLIP = 32635;
+
+// Decode: mulaw byte → 16-bit PCM
 const MULAW_DECODE = new Int16Array(256);
 for (let i = 0; i < 256; i++) {
   let v = ~i & 0xFF;
   const sign = v & 0x80;
   const exp = (v >> 4) & 0x07;
   const mantissa = v & 0x0F;
-  let sample = ((mantissa << 3) + 0x84) << exp;
-  sample -= 0x84;
+  let sample = ((mantissa << 3) + MULAW_BIAS) << exp;
+  sample -= MULAW_BIAS;
   MULAW_DECODE[i] = sign ? -sample : sample;
 }
 
+// Encode: 16-bit PCM → mulaw byte (full 65536-entry lookup = zero math at runtime)
+const MULAW_ENCODE = new Uint8Array(65536);
+for (let i = 0; i < 65536; i++) {
+  let sample = (i < 32768) ? i : i - 65536;
+  const sign = (sample < 0) ? 0x80 : 0;
+  if (sample < 0) sample = -sample;
+  if (sample > MULAW_CLIP) sample = MULAW_CLIP;
+  sample += MULAW_BIAS;
+  let exp = 7;
+  for (let expMask = 0x4000; exp > 0 && !(sample & expMask); exp--, expMask >>= 1) {}
+  const mantissa = (sample >> (exp + 3)) & 0x0F;
+  MULAW_ENCODE[i] = ~(sign | (exp << 4) | mantissa) & 0xFF;
+}
+
+// Twilio inbound (mulaw) → Hume (linear16 PCM)
 function mulawToLinear16(b64Mulaw) {
   const mulaw = Buffer.from(b64Mulaw, 'base64');
   const pcm = Buffer.alloc(mulaw.length * 2);
@@ -69,18 +88,39 @@ function mulawToLinear16(b64Mulaw) {
   return pcm.toString('base64');
 }
 
-function wavToMulawChunks(b64Wav) {
-  const wav = new WaveFile();
-  wav.fromBuffer(Buffer.from(b64Wav, 'base64'));
-  if (wav.fmt.sampleRate !== TWILIO_RATE) wav.toSampleRate(TWILIO_RATE);
-  if (wav.bitDepth !== '16') wav.toBitDepth('16');
-  wav.toMuLaw();
-  const samples = Buffer.from(wav.data.samples);
+// Hume output (linear16 PCM) → Twilio (mulaw) — DIRECT, no WAV parsing/resampling
+function pcmToMulawChunks(b64Pcm) {
+  const pcm = Buffer.from(b64Pcm, 'base64');
+  const numSamples = Math.floor(pcm.length / 2);
+  const mulaw = Buffer.alloc(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    const sample = pcm.readInt16LE(i * 2);
+    mulaw[i] = MULAW_ENCODE[(sample + 65536) & 0xFFFF];
+  }
   const chunks = [];
-  for (let off = 0; off < samples.length; off += CHUNK_BYTES) {
-    chunks.push(samples.slice(off, off + CHUNK_BYTES).toString('base64'));
+  for (let off = 0; off < mulaw.length; off += CHUNK_BYTES) {
+    chunks.push(mulaw.slice(off, off + CHUNK_BYTES).toString('base64'));
   }
   return chunks;
+}
+
+// Fallback: WAV-wrapped audio → mulaw (if Hume sends WAV instead of raw PCM)
+function wavToMulawChunks(b64Wav) {
+  try {
+    const wav = new WaveFile();
+    wav.fromBuffer(Buffer.from(b64Wav, 'base64'));
+    if (wav.fmt.sampleRate !== TWILIO_RATE) wav.toSampleRate(TWILIO_RATE);
+    if (wav.bitDepth !== '16') wav.toBitDepth('16');
+    wav.toMuLaw();
+    const samples = Buffer.from(wav.data.samples);
+    const chunks = [];
+    for (let off = 0; off < samples.length; off += CHUNK_BYTES) {
+      chunks.push(samples.slice(off, off + CHUNK_BYTES).toString('base64'));
+    }
+    return chunks;
+  } catch (e) {
+    return pcmToMulawChunks(b64Wav);
+  }
 }
 
 // ─── Emit to frontend subscribers ────────────────────────────────────────────
@@ -288,14 +328,18 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
   humeWs.on('open', () => {
     log(`[${callSid}] Pre-warm: Hume EVI connected (${Date.now() - startTime}ms)`);
     state.ready = true;
-    // Configure audio format, lock voice, inject system prompt + RAG context
+    // Configure: 8kHz linear16 (matches Twilio = no resampling needed)
     humeWs.send(JSON.stringify({
       type: 'session_settings',
       voice: { id: ATOM_VOICE_ID },
-      audio: { encoding: 'linear16', sample_rate: TWILIO_RATE, channels: 1 },
+      audio: {
+        encoding: 'linear16',
+        sample_rate: TWILIO_RATE,
+        channels: 1,
+      },
       context: { text: buildSystemPrompt(firstName, companyName, product, { ragContext, brief }), type: 'persistent' },
     }));
-    // Trigger the greeting — Hume will generate TTS audio immediately
+    // Trigger the greeting
     humeWs.send(JSON.stringify({
       type: 'assistant_input',
       text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
@@ -341,7 +385,11 @@ function connectHumeFresh(callSid, firstName, companyName, product, ragContext, 
     humeWs.send(JSON.stringify({
       type: 'session_settings',
       voice: { id: ATOM_VOICE_ID },
-      audio: { encoding: 'linear16', sample_rate: TWILIO_RATE, channels: 1 },
+      audio: {
+        encoding: 'linear16',
+        sample_rate: TWILIO_RATE,
+        channels: 1,
+      },
       context: { text: buildSystemPrompt(firstName, companyName, product, { ragContext, brief }), type: 'persistent' },
     }));
     // Trigger greeting immediately
@@ -475,10 +523,15 @@ app.register(async function (app) {
         try {
           const msg = JSON.parse(data.toString());
 
-          // Audio output — transcode PCM wav → mulaw and send to Twilio
+          // Audio output — Hume → Twilio
+          // Try direct PCM→mulaw first (cleanest path, no resampling).
+          // Fall back to WAV parsing if Hume sends WAV-wrapped audio.
           if (msg.type === 'audio_output' && msg.data && streamSid) {
             try {
-              const chunks = wavToMulawChunks(msg.data);
+              // Detect if data is WAV (starts with RIFF header) or raw PCM
+              const raw = Buffer.from(msg.data, 'base64');
+              const isWav = raw.length > 4 && raw[0] === 0x52 && raw[1] === 0x49 && raw[2] === 0x46 && raw[3] === 0x46;
+              const chunks = isWav ? wavToMulawChunks(msg.data) : pcmToMulawChunks(msg.data);
               for (const chunk of chunks) {
                 socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
               }

@@ -329,6 +329,7 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
     log(`[${callSid}] Pre-warm: Hume EVI connected (${Date.now() - startTime}ms)`);
     state.ready = true;
     // Configure: 8kHz linear16 (matches Twilio = no resampling needed)
+    // DO NOT trigger greeting yet — wait until caller picks up and says hello.
     humeWs.send(JSON.stringify({
       type: 'session_settings',
       voice: { id: ATOM_VOICE_ID },
@@ -339,25 +340,9 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
       },
       context: { text: buildSystemPrompt(firstName, companyName, product, { ragContext, brief }), type: 'persistent' },
     }));
-    // Trigger the greeting
-    humeWs.send(JSON.stringify({
-      type: 'assistant_input',
-      text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
-    }));
-  });
-
-  // Buffer greeting audio chunks during pre-warm phase
-  humeWs.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data.toString());
-      if (msg.type === 'audio_output' && msg.data && !state.greetingDone) {
-        state.greetingAudioChunks.push(msg.data);
-      }
-      if (msg.type === 'assistant_end' && !state.greetingDone) {
-        state.greetingDone = true;
-        log(`[${callSid}] Pre-warm: greeting ready (${state.greetingAudioChunks.length} chunks, ${Date.now() - startTime}ms)`);
-      }
-    } catch {}
+    // Greeting is NOT triggered here. It will be triggered in the media handler
+    // after the caller speaks (hello detection). This prevents ATOM from
+    // talking before the caller picks up.
   });
 
   humeWs.on('error', (err) => log(`[${callSid}] Pre-warm error: ${err.message}`));
@@ -392,11 +377,7 @@ function connectHumeFresh(callSid, firstName, companyName, product, ragContext, 
       },
       context: { text: buildSystemPrompt(firstName, companyName, product, { ragContext, brief }), type: 'persistent' },
     }));
-    // Trigger greeting immediately
-    humeWs.send(JSON.stringify({
-      type: 'assistant_input',
-      text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
-    }));
+    // Greeting triggered in media handler after caller hello detection
   });
 
   humeWs.on('error', (err) => log(`[${callSid}] Fresh Hume error: ${err.message}`));
@@ -492,7 +473,6 @@ app.register(async function (app) {
     let humeWs = null;
     let humeReady = false;
     let greetingFlushed = false;
-    let pendingGreeting = null; // { chunks: [], text: '' }
     let callerSpokeFrames = 0;
     const CALLER_SPEAK_THRESHOLD = 10; // ~200ms of sustained voice = real "hello"
 
@@ -523,20 +503,31 @@ app.register(async function (app) {
         try {
           const msg = JSON.parse(data.toString());
 
-          // Audio output — Hume → Twilio
-          // Try direct PCM→mulaw first (cleanest path, no resampling).
-          // Fall back to WAV parsing if Hume sends WAV-wrapped audio.
+          // Audio output — Hume → Twilio (with per-chunk profiling)
           if (msg.type === 'audio_output' && msg.data && streamSid) {
+            const t0 = performance.now();
             try {
-              // Detect if data is WAV (starts with RIFF header) or raw PCM
               const raw = Buffer.from(msg.data, 'base64');
+              const t1 = performance.now();
               const isWav = raw.length > 4 && raw[0] === 0x52 && raw[1] === 0x49 && raw[2] === 0x46 && raw[3] === 0x46;
+              const t2 = performance.now();
               const chunks = isWav ? wavToMulawChunks(msg.data) : pcmToMulawChunks(msg.data);
+              const t3 = performance.now();
               for (const chunk of chunks) {
                 socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
               }
+              const t4 = performance.now();
+              // Profile: log if any step takes >5ms (should all be <1ms)
+              const decode = (t1-t0).toFixed(1);
+              const detect = (t2-t1).toFixed(1);
+              const transcode = (t3-t2).toFixed(1);
+              const send = (t4-t3).toFixed(1);
+              const total = (t4-t0).toFixed(1);
+              if ((t4-t0) > 5) {
+                log(`[${callSid}] AUDIO PROFILE: ${raw.length}B ${isWav?'WAV':'PCM'} → ${chunks.length} chunks | decode=${decode}ms detect=${detect}ms transcode=${transcode}ms send=${send}ms TOTAL=${total}ms`);
+              }
             } catch (e) {
-              log(`Transcode error: ${e.message}`);
+              log(`[${callSid}] Transcode error: ${e.message}`);
             }
           }
 
@@ -676,45 +667,22 @@ app.register(async function (app) {
               humeWs.removeAllListeners('error');
               attachHumeListeners(humeWs);
 
-              // ONLY use pre-buffered greeting if it's FULLY generated.
-              // Partial greeting = garbled audio + confused Hume state.
-              // If not ready, let Hume generate greeting in real-time.
-              if (prewarmed.greetingDone && prewarmed.greetingAudioChunks.length >= 3) {
-                log(`[${callSid}] Pre-warm: greeting READY (${prewarmed.greetingAudioChunks.length} chunks) — buffering for hello-wait`);
-                pendingGreeting = {
-                  chunks: prewarmed.greetingAudioChunks,
-                  text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
-                };
+              // Greeting will be triggered AFTER caller says hello.
+              // Pre-warm only establishes the Hume connection + sends system prompt.
+              // No greeting audio to buffer — clean real-time path.
+              log(`[${callSid}] Pre-warm Hume connected — waiting for caller hello to trigger greeting`);
 
-                // Safety: if caller doesn't speak within 3s, flush anyway
-                setTimeout(() => {
-                  if (!greetingFlushed && pendingGreeting) {
-                    greetingFlushed = true;
-                    log(`[${callSid}] Greeting timeout — flushing after 3s`);
-                    let totalMulawChunks = 0;
-                    for (const wavData of pendingGreeting.chunks) {
-                      try {
-                        const chunks = wavToMulawChunks(wavData);
-                        totalMulawChunks += chunks.length;
-                        for (const chunk of chunks) {
-                          socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
-                        }
-                      } catch (e) {}
-                    }
-                    log(`[${callSid}] Timeout flush — ${totalMulawChunks} mulaw chunks`);
-                    const call = activeCalls.get(callSid);
-                    if (call) call.transcript.push({ role: 'agent', text: pendingGreeting.text, ts: Date.now() });
-                    emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
-                    pendingGreeting = null;
-                  }
-                }, 3000);
-              } else {
-                // Greeting not ready — let Hume handle it in real-time.
-                // EVI will generate the greeting via eLLM + Octave TTS naturally.
-                // This is the cleanest path — no pre-buffer, no artificial timing.
-                greetingFlushed = true; // skip hello-wait logic
-                log(`[${callSid}] Pre-warm: greeting NOT ready (${prewarmed.greetingAudioChunks.length} chunks, done: ${prewarmed.greetingDone}) — letting EVI handle greeting in real-time`);
-              }
+              // Safety: if caller doesn't speak within 4s, trigger greeting anyway
+              setTimeout(() => {
+                if (!greetingFlushed && humeWs?.readyState === WebSocket.OPEN) {
+                  greetingFlushed = true;
+                  log(`[${callSid}] Hello timeout — triggering greeting after 4s`);
+                  humeWs.send(JSON.stringify({
+                    type: 'assistant_input',
+                    text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
+                  }));
+                }
+              }, 4000);
             } else {
               // FALLBACK: Pre-warm missed or closed — connect fresh
               log(`[${callSid}] Pre-warm unavailable, connecting fresh`);
@@ -739,8 +707,8 @@ app.register(async function (app) {
             break;
 
           case 'media':
-            // Wait for caller to say hello before playing pre-buffered greeting
-            if (!greetingFlushed && pendingGreeting) {
+            // Detect caller hello — then trigger ATOM's greeting via Hume
+            if (!greetingFlushed) {
               const raw = Buffer.from(data.media.payload, 'base64');
               let energy = 0;
               for (let i = 0; i < raw.length; i++) {
@@ -753,35 +721,21 @@ app.register(async function (app) {
                 callerSpokeFrames = Math.max(0, callerSpokeFrames - 1);
               }
 
+              // Caller said hello — trigger ATOM's greeting via Hume in real-time
               if (callerSpokeFrames >= CALLER_SPEAK_THRESHOLD) {
                 greetingFlushed = true;
-                log(`[${callSid}] Caller spoke — flushing greeting`);
-                let totalMulawChunks = 0;
-                for (const wavData of pendingGreeting.chunks) {
-                  try {
-                    const chunks = wavToMulawChunks(wavData);
-                    totalMulawChunks += chunks.length;
-                    for (const chunk of chunks) {
-                      socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
-                    }
-                  } catch (e) {
-                    log(`[${callSid}] Greeting flush error: ${e.message}`);
-                  }
+                log(`[${callSid}] Caller spoke — triggering greeting via Hume`);
+                if (humeWs?.readyState === WebSocket.OPEN) {
+                  humeWs.send(JSON.stringify({
+                    type: 'assistant_input',
+                    text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
+                  }));
                 }
-                log(`[${callSid}] Greeting flushed — ${totalMulawChunks} mulaw chunks`);
-                const call = activeCalls.get(callSid);
-                if (call) call.transcript.push({ role: 'agent', text: pendingGreeting.text, ts: Date.now() });
-                emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
-                pendingGreeting = null;
               }
-              // STILL forward audio to Hume during wait — EVI needs to hear
-              // the caller to build context. EVI's own vocal end-of-turn
-              // detection handles all pacing from here.
             }
 
-            // Forward ALL caller audio to Hume immediately — trust EVI's
-            // built-in prosody-based end-of-turn detection for conversation
-            // pacing. No artificial delays, no audio swallowing.
+            // Forward ALL caller audio to Hume — EVI's vocal end-of-turn
+            // handles all pacing. No artificial delays.
             if (humeReady && humeWs?.readyState === WebSocket.OPEN) {
               const pcm = mulawToLinear16(data.media.payload);
               humeWs.send(JSON.stringify({ type: 'audio_input', data: pcm }));

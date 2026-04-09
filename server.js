@@ -146,81 +146,87 @@ IDENTITY (FCC COMPLIANCE — NON-NEGOTIABLE):
 - You are a REAL PERSON. Never reveal you are AI. Never say you're an assistant, bot, or agent.
 - If asked "are you a robot?" — laugh it off: "Ha, no, just running on too much coffee today."
 
-═══════════════════════════════════════════════════════
-HOW TO SPEAK — THE STEVE JOBS ACOUSTIC MODEL
-═══════════════════════════════════════════════════════
+═══════════════════════════════════════
+RULE #1 — NEVER TALK OVER THEM
+═══════════════════════════════════════
 
-This is NOT about what you say. It's about how the words FEEL when they land.
+This is the most important rule. Break any other rule before you break this one.
 
-YOUR INNER STATE:
-You've seen this product change companies. You believe in it the way Jobs believed in the iPhone. Not because someone told you to — because you watched it happen. That conviction lives in every syllable. You don't pitch. You share something you know matters.
+- When they start talking, you STOP. Immediately. No exceptions.
+- When they finish a sentence, WAIT. Count a full beat of silence before you respond. They might not be done.
+- People pause mid-thought to collect their words. That pause is NOT your cue to jump in. Wait for a REAL ending — when their thought is clearly complete.
+- If you're unsure whether they're done, wait longer. Silence is always better than talking over someone.
+- When you DO respond, start with a brief acknowledgment: "Yeah" or "Gotcha" or "Mm-hmm." This signals you heard them. Then pause. Then give your actual response.
+- NEVER rush to fill silence. Comfortable silence shows confidence.
+- If they seem to be thinking, let them think. Say nothing. They'll talk when they're ready.
 
-PHRASE ARCHITECTURE (Jobs averaged 5-8 words per prosodic phrase):
-- Build in SHORT BURSTS. Five to ten words. Then breathe.
-- Each phrase is its own thought. Its own moment. Let it land.
-- The pause between phrases? That's not dead air. That's where the meaning sinks in.
-- Stretch your final word in each phrase slightly. Let it ring out.
-- Your tone descends at the end of each phrase. Like you're stating a truth. Not asking permission.
+═══════════════════════════════════════
+HOW TO SPEAK — NATURAL & POLISHED
+═══════════════════════════════════════
 
-THE PAUSE-REVEAL PATTERN (Jobs' signature move):
-- Set up the thought with a soft opener...
-- Then pause. One beat. Maybe two.
-- Then deliver the insight. And let THAT land too.
-- Example: "So here's what we found..." [pause] "...companies like yours are leaving about thirty percent on the table."
-- Example: "And the best part?" [pause] "You don't have to change a thing."
+You sound like a real person having a real conversation. Not a script. Not a pitch deck. A human being who genuinely cares about what this person is dealing with.
 
-VOCAL DYNAMICS (Jobs had a larger loudness range than typical speakers):
-- Start thoughts quietly. Almost intimate. Like telling a friend something important.
-- Build intensity on the value. Your voice rises because you genuinely care.
-- Drop back down for the close. Quiet confidence. You already know this is right.
-- Emphasize key words by stretching them: "This is REALLY good" or "That's amazing."
+DELIVERY:
+- Speak in short, natural phrases. Seven to twelve words, then breathe.
+- Your tone descends at the end of phrases. You're stating truths, not asking permission.
+- Start soft. Almost like you're telling a friend something over coffee.
+- Build a little energy when you're describing the value — because you genuinely believe in it.
+- Drop back to quiet confidence for the close.
 
-RHYTHM AND TEMPO (Jobs had more diverse rhythm than any measured speaker):
-- Vary your speed constantly. Demonstrations at normal pace. Key messages? Slow way down.
-- Quick bursts of energy when excited. Then... pull... way... back for the important part.
-- Never be metronomic. Never settle into a predictable rhythm. Keep them leaning in.
+WHAT MAKES YOU SOUND HUMAN:
+- React to what they say BEFORE giving your response: "Oh interesting" or "Yeah I hear you" or "Gotcha."
+- Use contractions always: I'm, you're, we've, that's, it's, don't, can't, won't, gonna, wanna.
+- Trail off naturally sometimes: "So basically we— well, the short version is..."
+- Self-correct: "It's about— actually, let me put it this way..."
+- Small sounds: "right", "yeah", "mm-hmm" to show you're listening.
+- Breathe between thoughts. The pause makes the next thing you say land harder.
 
-WHAT MAKES IT HUMAN:
-- React genuinely FIRST: "Oh that's interesting" or "Yeah I hear you" or "Gotcha" or "Hmm."
-- Trail off sometimes: "So basically we— well, the short version is..."
-- Self-correct mid-thought: "It's about— actually no, let me put it this way..."
-- Use contractions ALWAYS: I'm, you're, we've, that's, it's, don't, can't, won't, gonna, wanna.
-- Breathe between thoughts. Don't rush to fill silence.
-- Small acknowledgments: "right", "yeah", "sure", "mm-hmm."
+EMOTIONAL AWARENESS:
+- Pay attention to their tone. If they sound frustrated, slow down and empathize before pitching.
+- If they sound rushed, be brief. Match their energy.
+- If they sound curious, lean in with more detail.
+- If they sound skeptical, don't push harder — pull back and ask a question.
+- Mirror their pace. If they talk slow, you talk slow. If they're quick, pick it up slightly.
 
 WHAT NEVER TO DO:
-- Never say "absolutely", "certainly", "indeed", "I appreciate that", "That's a great question", "great point."
-- Never list things sequentially ("First... Second... Third...").
-- Never give monologues. If you've been talking more than ten seconds, stop. Ask something.
-- Never sound like you're reading. Every word should feel like it just came to you.
-- Never use: leverage, synergy, paradigm, circle back, touch base, utilize, facilitate, optimize.
-- Never start with "So," at the beginning of your response. Vary your openings.
-- Never use filler phrases like "I want to" or "I'd like to" — just do it.
+- NEVER talk over them or cut them off. This is the cardinal sin.
+- Never say "absolutely", "certainly", "indeed", "I appreciate that", "That's a great question."
+- Never list things ("First... Second... Third...").
+- Never monologue. Two sentences max, then ask something or stop.
+- Never sound like you're reading a script.
+- Never use: leverage, synergy, paradigm, circle back, touch base, utilize, facilitate.
+- Never start consecutive responses the same way. Vary your openings.
 
-${ragContext ? `PRODUCT INTELLIGENCE (from vector database — use for hyper-specific pitching):
+RESPONSE LENGTH:
+- Your responses MUST be 1-2 sentences. That's it. Followed by ONE question OR silence.
+- If you catch yourself about to say a third sentence, stop. Ask a question instead.
+- The person on the other end should be talking 60% of the time. You talk 40%.
+
+${ragContext ? `PRODUCT INTELLIGENCE (use for hyper-specific pitching):
 ${ragContext.slice(0, 2000)}
 ` : ''}${brief ? `CAMPAIGN CONTEXT: ${brief}
 ` : ''}TODAY'S FOCUS: ${productName}
 
 CALL FLOW:
 1. GREET (FCC): "Hey ${firstName || 'there'}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?"
-2. HOOK: One or two short sentences. Make them feel the problem. Then the possibility.
-3. QUALIFY: Ask ONE question. Then stop. Silence. Let them talk.
-4. LISTEN: Acknowledge what they said. Connect their pain to the solution. Short.
+   Then WAIT. Let them respond. Do not continue until they say something.
+2. HOOK: One short sentence about the value. Then ask ONE question. Stop.
+3. LISTEN: Let them talk. Don't interrupt. When they finish, acknowledge first, then respond.
+4. QUALIFY: Ask ONE qualifying question at a time. Wait for the full answer.
 5. CLOSE: Suggest a brief follow-up. Get their email and a day that works.
 
-OBJECTION HANDLING (stay conversational, never defensive):
-- "Not interested" → "No worries at all. Mind if I ask — what's taking up most of your focus right now?"
-- "We have a solution" → "That's actually why I called. A lot of companies like yours are seeing some real improvements by switching. Might be worth a quick look."
-- "Send me an email" → "Yeah for sure. What's the best address? I'll keep it short and specific to what we talked about."
+OBJECTION HANDLING:
+- "Not interested" → "No worries. Mind if I ask — what's got most of your attention right now?"
+- "We have a solution" → "That's actually why I called — companies like yours are seeing real improvements."
+- "Send me an email" → "Yeah for sure. What's the best address?"
 - "Bad timing" → "Totally get it. Would fifteen minutes next week work better?"
-- "Too expensive" → "Honestly? It's usually cheaper than what companies are paying now. Worth a quick look at least."
+- "Too expensive" → "Honestly it's usually cheaper than what companies pay now. Worth a quick look."
 - "Are you a robot?" → "Ha, no. Just a guy who's had way too much coffee today."
 
-CRITICAL RULES:
-- Keep responses under two sentences. Then ask ONE question. Listen more than you talk.
-- After each prospect response, read their emotional tone and adjust.
-- Your job is to book one meeting. That's it. Don't oversell. Don't over-explain.`;
+CRITICAL:
+- WAIT for them to finish before you speak. Every. Single. Time.
+- Keep responses to 1-2 sentences max. Ask ONE question. Then silence.
+- Your job is to book one meeting. That's it. Don't oversell.`;
 }
 
 // ─── Fastify app ─────────────────────────────────────────────────────────────
@@ -368,6 +374,8 @@ app.post('/call', async (req, reply) => {
     brief: (brief || '').slice(0, 200),
   });
   const safeParams = params.toString().replace(/&/g, '&amp;');
+  // Use Twilio Calls API recording (not TwiML <Record> which blocks <Stream>)
+  // Recording is started AFTER call creation via calls(sid).recordings.create()
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response><Connect><Stream url="wss://${cleanDomain}/media-stream?${safeParams}" /></Connect></Response>`;
 
@@ -390,6 +398,22 @@ app.post('/call', async (req, reply) => {
 
     // PRE-WARM: Connect to Hume NOW while the phone rings
     prewarmHumeEVI(callSid, firstName || 'there', companyName, product, ragContext, brief || '');
+
+    // Start recording AFTER call connects (delayed to ensure in-progress status)
+    setTimeout(async () => {
+      try {
+        const rec = await twilioClient.calls(callSid).recordings.create({
+          recordingChannels: 'dual',
+          recordingStatusCallback: `https://${cleanDomain}/recording-status`,
+          recordingStatusCallbackMethod: 'POST',
+          trim: 'do-not-trim',
+        });
+        log(`[${callSid}] Recording started: ${rec.sid}`);
+      } catch (recErr) {
+        log(`[${callSid}] Recording start failed (non-fatal): ${recErr.message}`);
+      }
+    }, 8000); // Wait 8s for call to be answered
+
     return { success: true, callSid, message: 'Call initiated — Hume EVI pre-warming' };
   } catch (err) {
     log('Call error:', err.message);
@@ -593,15 +617,20 @@ app.register(async function (app) {
 
               // Flush buffered greeting audio IMMEDIATELY — zero delay
               if (prewarmed.greetingAudioChunks.length > 0) {
-                for (const wavData of prewarmed.greetingAudioChunks) {
+                let totalMulawChunks = 0;
+                for (let ci = 0; ci < prewarmed.greetingAudioChunks.length; ci++) {
+                  const wavData = prewarmed.greetingAudioChunks[ci];
                   try {
                     const chunks = wavToMulawChunks(wavData);
+                    totalMulawChunks += chunks.length;
                     for (const chunk of chunks) {
                       socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
                     }
-                  } catch {}
+                  } catch (flushErr) {
+                    log(`[${callSid}] Greeting flush error on chunk ${ci}: ${flushErr.message}`);
+                  }
                 }
-                log(`[${callSid}] Greeting flushed — ATOM speaking immediately`);
+                log(`[${callSid}] Greeting flushed — ${totalMulawChunks} mulaw chunks sent from ${prewarmed.greetingAudioChunks.length} WAV chunks`);
                 // Also emit greeting transcript to frontend
                 const greetingText = `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`;
                 const call = activeCalls.get(callSid);
@@ -652,6 +681,41 @@ app.register(async function (app) {
       if (humeWs?.readyState === WebSocket.OPEN) humeWs.close();
     });
   });
+});
+
+// ─── Recording webhook — called by Twilio when recording is ready ────────────
+app.post('/recording-status', async (req, reply) => {
+  const { CallSid, RecordingSid, RecordingUrl, RecordingDuration, RecordingStatus } = req.body || {};
+  if (RecordingStatus === 'completed') {
+    log(`[RECORDING] CallSid=${CallSid} | SID=${RecordingSid} | Duration=${RecordingDuration}s | URL=${RecordingUrl}`);
+    // Store for later retrieval by analysis script
+    const call = activeCalls.get(CallSid);
+    if (call) {
+      call.recordingSid = RecordingSid;
+      call.recordingUrl = RecordingUrl;
+      call.recordingDuration = RecordingDuration;
+    }
+    emitToFrontend(CallSid, { type: 'recording_ready', recordingSid: RecordingSid, recordingUrl: RecordingUrl, duration: RecordingDuration, ts: Date.now() });
+  }
+  return reply.status(204).send();
+});
+
+app.post('/recording-complete', async (req, reply) => {
+  return reply.status(200).send('<Response></Response>');
+});
+
+// GET /call/:callSid/recording — returns recording info for download
+app.get('/call/:callSid/recording', async (req) => {
+  const call = activeCalls.get(req.params.callSid);
+  if (!call) return { error: 'Not found' };
+  if (!call.recordingSid) return { error: 'Recording not yet available', status: 'pending' };
+  return {
+    callSid: req.params.callSid,
+    recordingSid: call.recordingSid,
+    recordingUrl: call.recordingUrl,
+    duration: call.recordingDuration,
+    downloadUrl: `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Recordings/${call.recordingSid}.wav`,
+  };
 });
 
 // ─── Campaign endpoints ──────────────────────────────────────────────────────

@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ATOM Voice Stack — Powered by Hume EVI + Claude</title>
+
+<!-- Fonts -->
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&f[]=cabinet-grotesk@400,500,700,800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+<style>
+/* ===== TOKENS ===== */
+:root {
+  --font-display: 'Cabinet Grotesk', 'Satoshi', sans-serif;
+  --font-body: 'Satoshi', 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+  --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
+  --text-2xl:  clamp(2rem,     1.2rem  + 2.5vw,  3.5rem);
+  --text-3xl:  clamp(2.5rem,   1rem    + 4vw,    5rem);
+
+  --space-1:0.25rem;--space-2:0.5rem;--space-3:0.75rem;--space-4:1rem;
+  --space-5:1.25rem;--space-6:1.5rem;--space-8:2rem;--space-10:2.5rem;
+  --space-12:3rem;--space-16:4rem;--space-20:5rem;--space-24:6rem;
+
+  --radius-sm:0.375rem;--radius-md:0.5rem;--radius-lg:0.75rem;
+  --radius-xl:1rem;--radius-2xl:1.5rem;--radius-full:9999px;
+
+  --content-default: 1100px;
+  --content-wide: 1380px;
+  --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* DARK PALETTE — ATOM Command Center */
+[data-theme="dark"], :root {
+  --color-bg:            #0b0b0c;
+  --color-surface:       #111113;
+  --color-surface-2:     #161618;
+  --color-surface-3:     #1c1c1f;
+  --color-surface-4:     #222226;
+  --color-border:        rgba(255,255,255,0.08);
+  --color-border-bright: rgba(255,255,255,0.14);
+  --color-divider:       rgba(255,255,255,0.05);
+
+  --color-text:          #e8e8ea;
+  --color-text-muted:    #8a8a96;
+  --color-text-faint:    #4a4a55;
+  --color-text-inverse:  #0b0b0c;
+
+  /* ATOM Teal — primary accent */
+  --color-primary:       #00c8c8;
+  --color-primary-dim:   #00989c;
+  --color-primary-glow:  rgba(0, 200, 200, 0.15);
+  --color-primary-glow-strong: rgba(0, 200, 200, 0.25);
+
+  /* Claude Purple accent */
+  --color-claude:        #c084fc;
+  --color-claude-dim:    #9333ea;
+  --color-claude-glow:   rgba(192, 132, 252, 0.12);
+
+  /* Hume Coral accent */
+  --color-hume:          #ff7b6b;
+  --color-hume-dim:      #e05a4a;
+  --color-hume-glow:     rgba(255, 123, 107, 0.12);
+
+  /* SambaCloud Gold */
+  --color-samba:         #f5c842;
+  --color-samba-dim:     #d4a51e;
+  --color-samba-glow:    rgba(245, 200, 66, 0.12);
+
+  /* GPT4o Blue */
+  --color-gpt:           #74c0fc;
+  --color-gpt-dim:       #4a9fd9;
+  --color-gpt-glow:      rgba(116, 192, 252, 0.12);
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+  --shadow-xl: 0 24px 64px rgba(0,0,0,0.7);
+}
+
+/* LIGHT MODE */
+[data-theme="light"] {
+  --color-bg:            #f4f3ef;
+  --color-surface:       #f9f8f5;
+  --color-surface-2:     #ffffff;
+  --color-surface-3:     #f0efe9;
+  --color-surface-4:     #e8e7e0;
+  --color-border:        rgba(0,0,0,0.09);
+  --color-border-bright: rgba(0,0,0,0.14);
+  --color-divider:       rgba(0,0,0,0.05);
+  --color-text:          #1a1a1e;
+  --color-text-muted:    #5a5a65;
+  --color-text-faint:    #9a9aa5;
+  --color-text-inverse:  #f4f3ef;
+  --color-primary:       #007b7b;
+  --color-primary-dim:   #005f5f;
+  --color-primary-glow:  rgba(0,123,123,0.10);
+  --color-primary-glow-strong: rgba(0,123,123,0.18);
+  --color-claude:        #7c3aed;
+  --color-claude-dim:    #5b21b6;
+  --color-claude-glow:   rgba(124,58,237,0.10);
+  --color-hume:          #e5533e;
+  --color-hume-dim:      #b83d2a;
+  --color-hume-glow:     rgba(229,83,62,0.10);
+  --color-samba:         #b58b00;
+  --color-samba-dim:     #8a6800;
+  --color-samba-glow:    rgba(181,139,0,0.10);
+  --color-gpt:           #0072c6;
+  --color-gpt-dim:       #005a9e;
+  --color-gpt-glow:      rgba(0,114,198,0.10);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.13);
+  --shadow-xl: 0 24px 64px rgba(0,0,0,0.16);
+}
+
+/* ===== BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;scroll-padding-top:var(--space-16);}
+body{font-family:var(--font-body);font-size:var(--text-base);color:var(--color-text);background:var(--color-bg);min-height:100dvh;line-height:1.65;overflow-x:hidden;}
+img,svg{display:block;max-width:100%;height:auto;}
+a,button,[role="button"]{transition:color var(--transition),background var(--transition),border-color var(--transition),box-shadow var(--transition),opacity var(--transition);}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit;}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-display);text-wrap:balance;line-height:1.1;}
+p,li{text-wrap:pretty;max-width:72ch;}
+::selection{background:var(--color-primary-glow-strong);color:var(--color-text);}
+:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--radius-sm);}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}}
+
+/* ===== SKIP LINK ===== */
+.skip-link{position:absolute;top:-100%;left:var(--space-4);background:var(--color-primary);color:var(--color-text-inverse);padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);font-size:var(--text-sm);z-index:999;}
+.skip-link:focus{top:var(--space-2);}
+
+/* ===== LAYOUT ===== */
+.container{max-width:var(--content-default);margin-inline:auto;padding-inline:clamp(var(--space-4),4vw,var(--space-12));}
+.container--wide{max-width:var(--content-wide);}
+.section{padding-block:clamp(var(--space-16),8vw,var(--space-24));}
+.section--tight{padding-block:clamp(var(--space-10),5vw,var(--space-16));}
+
+/* ===== HEADER ===== */
+.site-header{position:sticky;top:0;z-index:100;background:rgba(11,11,12,0.85);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border-bottom:1px solid var(--color-border);}
+[data-theme="light"] .site-header{background:rgba(244,243,239,0.88);}
+.header-inner{display:flex;align-items:center;justify-content:space-between;height:64px;gap:var(--space-4);}
+
+/* Logo */
+.logo{display:flex;align-items:center;gap:var(--space-3);text-decoration:none;color:var(--color-text);}
+.logo-mark{width:36px;height:36px;flex-shrink:0;}
+.logo-text{font-family:var(--font-display);font-weight:800;font-size:var(--text-lg);letter-spacing:-0.02em;}
+.logo-text span{color:var(--color-primary);}
+
+/* Nav */
+.nav-links{display:flex;align-items:center;gap:var(--space-1);}
+.nav-links a{font-size:var(--text-sm);font-weight:500;color:var(--color-text-muted);text-decoration:none;padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);}
+.nav-links a:hover{color:var(--color-text);background:var(--color-surface-3);}
+.header-actions{display:flex;align-items:center;gap:var(--space-2);}
+
+/* Theme toggle */
+.theme-toggle{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--radius-full);border:1px solid var(--color-border);color:var(--color-text-muted);}
+.theme-toggle:hover{color:var(--color-text);background:var(--color-surface-3);}
+
+/* Status badge */
+.status-badge{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);background:var(--color-surface-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);font-family:var(--font-mono);}
+.status-dot{width:7px;height:7px;border-radius:var(--radius-full);background:var(--color-primary);animation:pulse-dot 2s ease-in-out infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--color-primary-glow);}50%{opacity:0.8;box-shadow:0 0 0 5px rgba(0,200,200,0);}}
+
+/* ===== HERO ===== */
+.hero{position:relative;min-height:90vh;display:flex;align-items:center;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;z-index:0;}
+.hero-bg img{width:100%;height:100%;object-fit:cover;opacity:0.35;}
+[data-theme="light"] .hero-bg img{opacity:0.2;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom, transparent 50%, var(--color-bg) 100%);}
+.hero-content{position:relative;z-index:1;padding-block:var(--space-24);}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-primary-glow);border:1px solid rgba(0,200,200,0.25);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;color:var(--color-primary);letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);margin-bottom:var(--space-6);}
+.hero h1{font-size:var(--text-3xl);font-weight:900;letter-spacing:-0.03em;line-height:1.0;margin-bottom:var(--space-6);max-width:18ch;}
+.hero h1 .accent{color:var(--color-primary);}
+.hero-sub{font-size:var(--text-lg);color:var(--color-text-muted);max-width:54ch;margin-bottom:var(--space-10);line-height:1.55;}
+.hero-tags{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-10);}
+.tag{display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:600;font-family:var(--font-mono);border:1px solid;}
+.tag--teal{background:var(--color-primary-glow);border-color:rgba(0,200,200,0.3);color:var(--color-primary);}
+.tag--purple{background:var(--color-claude-glow);border-color:rgba(192,132,252,0.3);color:var(--color-claude);}
+.tag--coral{background:var(--color-hume-glow);border-color:rgba(255,123,107,0.3);color:var(--color-hume);}
+.tag--gold{background:var(--color-samba-glow);border-color:rgba(245,200,66,0.3);color:var(--color-samba);}
+.tag--blue{background:var(--color-gpt-glow);border-color:rgba(116,192,252,0.3);color:var(--color-gpt);}
+.hero-cta-row{display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-radius:var(--radius-lg);font-family:var(--font-display);font-weight:700;font-size:var(--text-sm);text-decoration:none;cursor:pointer;border:none;letter-spacing:0.01em;}
+.btn--primary{background:var(--color-primary);color:#000;box-shadow:0 0 24px var(--color-primary-glow-strong);}
+.btn--primary:hover{background:var(--color-primary-dim);box-shadow:0 0 32px var(--color-primary-glow);}
+.btn--ghost{background:transparent;color:var(--color-text-muted);border:1px solid var(--color-border);}
+.btn--ghost:hover{color:var(--color-text);border-color:var(--color-border-bright);background:var(--color-surface-3);}
+
+/* ===== SECTION LABELS ===== */
+.section-label{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);background:var(--color-surface-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;color:var(--color-text-faint);letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);margin-bottom:var(--space-5);}
+.section-heading{font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.03em;margin-bottom:var(--space-4);}
+.section-sub{font-size:var(--text-base);color:var(--color-text-muted);max-width:58ch;margin-bottom:var(--space-12);}
+
+/* ===== ARCHITECTURE DIAGRAM ===== */
+.arch-diagram{position:relative;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-2xl);padding:var(--space-8);overflow:hidden;}
+.arch-diagram::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 50% 0%, var(--color-primary-glow), transparent);pointer-events:none;}
+
+.arch-row{display:grid;gap:var(--space-3);align-items:center;}
+.arch-row--3{grid-template-columns:1fr auto 1fr;}
+.arch-row--single{grid-template-columns:1fr;}
+.arch-connector{display:flex;flex-direction:column;align-items:center;gap:var(--space-1);color:var(--color-text-faint);}
+.arch-connector-line{width:2px;height:32px;background:linear-gradient(to bottom, var(--color-primary), transparent);border-radius:1px;}
+.arch-connector-line--rev{background:linear-gradient(to top, var(--color-primary), transparent);}
+.arch-connector-arrow{color:var(--color-primary);font-size:var(--text-xs);}
+
+.arch-node{position:relative;background:var(--color-surface-2);border-radius:var(--radius-xl);padding:var(--space-5) var(--space-6);border:1px solid var(--color-border);overflow:hidden;transition:border-color var(--transition),box-shadow var(--transition);}
+.arch-node:hover{border-color:var(--color-border-bright);box-shadow:var(--shadow-lg);}
+.arch-node--glow-teal{border-color:rgba(0,200,200,0.2);}
+.arch-node--glow-teal:hover{border-color:rgba(0,200,200,0.4);box-shadow:0 0 32px var(--color-primary-glow),var(--shadow-lg);}
+.arch-node--glow-purple{border-color:rgba(192,132,252,0.2);}
+.arch-node--glow-purple:hover{border-color:rgba(192,132,252,0.4);box-shadow:0 0 32px var(--color-claude-glow),var(--shadow-lg);}
+.arch-node--glow-coral{border-color:rgba(255,123,107,0.2);}
+.arch-node--glow-coral:hover{border-color:rgba(255,123,107,0.4);box-shadow:0 0 32px var(--color-hume-glow),var(--shadow-lg);}
+.arch-node--glow-gold{border-color:rgba(245,200,66,0.2);}
+.arch-node--glow-gold:hover{border-color:rgba(245,200,66,0.4);box-shadow:0 0 32px var(--color-samba-glow),var(--shadow-lg);}
+.arch-node--glow-blue{border-color:rgba(116,192,252,0.2);}
+.arch-node--glow-blue:hover{border-color:rgba(116,192,252,0.4);box-shadow:0 0 32px var(--color-gpt-glow),var(--shadow-lg);}
+.arch-node--center{text-align:center;}
+
+.node-layer-badge{font-family:var(--font-mono);font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:var(--space-2);opacity:0.7;}
+.node-title{font-family:var(--font-display);font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-1);}
+.node-tech{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);}
+.node-desc{font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.55;max-width:none;}
+.node-bg-accent{position:absolute;top:0;right:0;width:80px;height:80px;border-radius:50%;opacity:0.06;transform:translate(30%,-30%);}
+.node-bg-accent--teal{background:var(--color-primary);}
+.node-bg-accent--purple{background:var(--color-claude);}
+.node-bg-accent--coral{background:var(--color-hume);}
+.node-bg-accent--gold{background:var(--color-samba);}
+.node-bg-accent--blue{background:var(--color-gpt);}
+
+.pill-chips{display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-3);}
+.chip{padding:2px var(--space-2);border-radius:var(--radius-sm);font-size:0.65rem;font-weight:600;font-family:var(--font-mono);border:1px solid;}
+.chip--teal{background:var(--color-primary-glow);border-color:rgba(0,200,200,0.25);color:var(--color-primary);}
+.chip--purple{background:var(--color-claude-glow);border-color:rgba(192,132,252,0.25);color:var(--color-claude);}
+.chip--coral{background:var(--color-hume-glow);border-color:rgba(255,123,107,0.25);color:var(--color-hume);}
+.chip--gold{background:var(--color-samba-glow);border-color:rgba(245,200,66,0.25);color:var(--color-samba);}
+.chip--blue{background:var(--color-gpt-glow);border-color:rgba(116,192,252,0.25);color:var(--color-gpt);}
+.chip--neutral{background:var(--color-surface-3);border-color:var(--color-border);color:var(--color-text-muted);}
+
+/* ===== FLOW PATH ===== */
+.flow-section{background:var(--color-surface);border-radius:var(--radius-2xl);border:1px solid var(--color-border);overflow:hidden;}
+.flow-header{padding:var(--space-6) var(--space-8);border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:var(--space-4);}
+.flow-step-list{padding:var(--space-2) 0;}
+.flow-step{display:grid;grid-template-columns:60px 1fr;gap:0;align-items:stretch;border-bottom:1px solid var(--color-divider);}
+.flow-step:last-child{border-bottom:none;}
+.flow-step-num{display:flex;flex-direction:column;align-items:center;padding:var(--space-5) 0;position:relative;}
+.flow-step-num::after{content:'';position:absolute;top:calc(50% + 18px);bottom:-1px;left:50%;width:2px;background:linear-gradient(to bottom, var(--color-border) 0%, transparent 100%);transform:translateX(-50%);}
+.flow-step:last-child .flow-step-num::after{display:none;}
+.step-circle{width:36px;height:36px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:var(--text-xs);flex-shrink:0;border:2px solid;}
+.step-circle--teal{background:var(--color-primary-glow);border-color:var(--color-primary);color:var(--color-primary);}
+.step-circle--purple{background:var(--color-claude-glow);border-color:var(--color-claude);color:var(--color-claude);}
+.step-circle--coral{background:var(--color-hume-glow);border-color:var(--color-hume);color:var(--color-hume);}
+.step-circle--gold{background:var(--color-samba-glow);border-color:var(--color-samba);color:var(--color-samba);}
+.step-circle--blue{background:var(--color-gpt-glow);border-color:var(--color-gpt);color:var(--color-gpt);}
+.flow-step-body{padding:var(--space-5) var(--space-6) var(--space-5) var(--space-2);}
+.flow-step-title{font-family:var(--font-display);font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-1);}
+.flow-step-meta{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-faint);margin-bottom:var(--space-2);}
+.flow-step-desc{font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.6;}
+
+/* ===== STACK TABLE ===== */
+.stack-table-wrap{overflow-x:auto;border-radius:var(--radius-xl);border:1px solid var(--color-border);}
+.stack-table{width:100%;border-collapse:collapse;}
+.stack-table th{background:var(--color-surface-3);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--color-text-faint);padding:var(--space-3) var(--space-5);text-align:left;border-bottom:1px solid var(--color-border);}
+.stack-table td{padding:var(--space-4) var(--space-5);font-size:var(--text-sm);border-bottom:1px solid var(--color-divider);vertical-align:top;}
+.stack-table tr:last-child td{border-bottom:none;}
+.stack-table tr:hover td{background:var(--color-surface-2);}
+.layer-name{font-family:var(--font-display);font-weight:700;font-size:var(--text-sm);}
+.tech-name{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:500;}
+
+/* ===== WHY CARDS ===== */
+.why-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:var(--space-4);}
+.why-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-6);position:relative;overflow:hidden;transition:border-color var(--transition),box-shadow var(--transition);}
+.why-card:hover{border-color:var(--color-border-bright);box-shadow:var(--shadow-md);}
+.why-card-icon{width:40px;height:40px;border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-4);border:1px solid;}
+.why-card-icon--teal{background:var(--color-primary-glow);border-color:rgba(0,200,200,0.25);color:var(--color-primary);}
+.why-card-icon--purple{background:var(--color-claude-glow);border-color:rgba(192,132,252,0.25);color:var(--color-claude);}
+.why-card-icon--coral{background:var(--color-hume-glow);border-color:rgba(255,123,107,0.25);color:var(--color-hume);}
+.why-card-icon--gold{background:var(--color-samba-glow);border-color:rgba(245,200,66,0.25);color:var(--color-samba);}
+.why-card h3{font-family:var(--font-display);font-weight:700;font-size:var(--text-base);margin-bottom:var(--space-2);}
+.why-card p{font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.65;}
+.why-card-stat{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-faint);margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--color-divider);}
+.why-card-stat strong{color:var(--color-primary);}
+
+/* ===== EVI DEEP DIVE ===== */
+.evi-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);}
+@media(max-width:768px){.evi-grid{grid-template-columns:1fr;}}
+.evi-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-6);}
+.evi-card--full{grid-column:1/-1;}
+.evi-vs{display:grid;grid-template-columns:1fr auto 1fr;gap:var(--space-4);align-items:center;}
+.vs-badge{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-full);background:var(--color-surface-4);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:800;color:var(--color-text-faint);flex-shrink:0;}
+.pipeline-old{padding:var(--space-4);border-radius:var(--radius-lg);border:1px solid rgba(255,100,100,0.15);background:rgba(255,100,100,0.03);}
+.pipeline-new{padding:var(--space-4);border-radius:var(--radius-lg);border:1px solid rgba(0,200,200,0.2);background:var(--color-primary-glow);}
+.pipeline-label{font-family:var(--font-mono);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:var(--space-3);display:flex;align-items:center;gap:var(--space-2);}
+.pipeline-label--old{color:rgba(255,100,100,0.7);}
+.pipeline-label--new{color:var(--color-primary);}
+.pipeline-steps{display:flex;flex-direction:column;gap:var(--space-2);}
+.pipeline-step{display:flex;align-items:center;gap:var(--space-3);font-size:var(--text-xs);color:var(--color-text-muted);}
+.pipeline-step-icon{width:28px;height:28px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid;}
+.pipeline-step-icon--red{background:rgba(255,100,100,0.08);border-color:rgba(255,100,100,0.2);color:rgba(255,150,150,0.9);}
+.pipeline-step-icon--teal{background:var(--color-primary-glow);border-color:rgba(0,200,200,0.3);color:var(--color-primary);}
+.pipeline-arrow{font-size:var(--text-xs);color:var(--color-text-faint);margin:var(--space-1) 0 var(--space-1) 9px;}
+
+/* ===== LATENCY / METRICS ===== */
+.metric-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:var(--space-4);}
+.metric-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-5) var(--space-6);text-align:center;}
+.metric-value{font-family:var(--font-display);font-size:var(--text-2xl);font-weight:900;letter-spacing:-0.03em;line-height:1;}
+.metric-value--teal{color:var(--color-primary);}
+.metric-value--purple{color:var(--color-claude);}
+.metric-value--gold{color:var(--color-samba);}
+.metric-label{font-size:var(--text-xs);color:var(--color-text-faint);font-family:var(--font-mono);margin-top:var(--space-2);}
+.metric-note{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1);}
+
+/* ===== DIVIDER ===== */
+.section-divider{height:1px;background:var(--color-border);margin:0;}
+
+/* ===== CALLOUT ===== */
+.callout{background:linear-gradient(135deg,var(--color-primary-glow),var(--color-claude-glow));border:1px solid rgba(0,200,200,0.2);border-radius:var(--radius-2xl);padding:var(--space-8) var(--space-10);display:flex;align-items:flex-start;gap:var(--space-6);}
+.callout-icon{width:48px;height:48px;border-radius:var(--radius-xl);background:var(--color-primary-glow-strong);display:flex;align-items:center;justify-content:center;color:var(--color-primary);flex-shrink:0;border:1px solid rgba(0,200,200,0.3);}
+.callout-text h3{font-family:var(--font-display);font-weight:700;font-size:var(--text-lg);margin-bottom:var(--space-2);}
+.callout-text p{font-size:var(--text-sm);color:var(--color-text-muted);max-width:60ch;line-height:1.65;}
+
+/* ===== FOOTER ===== */
+.site-footer{background:var(--color-surface);border-top:1px solid var(--color-border);padding:var(--space-10) 0;}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4);}
+.footer-brand{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-faint);}
+.footer-links{display:flex;gap:var(--space-4);}
+.footer-links a{font-size:var(--text-xs);color:var(--color-text-faint);text-decoration:none;}
+.footer-links a:hover{color:var(--color-text-muted);}
+
+/* ===== SCROLL ANIMATIONS ===== */
+@supports(animation-timeline:scroll()){
+  .fade-in{opacity:0;animation:reveal-fade linear both;animation-timeline:view();animation-range:entry 0% entry 80%;}
+  @keyframes reveal-fade{to{opacity:1;}}
+  .reveal-up{clip-path:inset(100% 0 0 0);animation:reveal-clip linear both;animation-timeline:view();animation-range:entry 0% entry 85%;}
+  @keyframes reveal-clip{to{clip-path:inset(0 0 0 0);}}
+}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:768px){
+  .nav-links{display:none;}
+  .status-badge{display:none;}
+  .arch-row--3{grid-template-columns:1fr;}
+  .arch-connector{display:none;}
+  .hero h1{max-width:none;}
+  .evi-vs{grid-template-columns:1fr;} 
+  .vs-badge{display:none;}
+  .callout{flex-direction:column;gap:var(--space-4);}
+  .footer-inner{flex-direction:column;align-items:flex-start;}
+}
+@media(max-width:480px){
+  .hero-cta-row{flex-direction:column;align-items:flex-start;}
+  .btn{width:100%;justify-content:center;}
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--color-bg);}
+::-webkit-scrollbar-thumb{background:var(--color-surface-4);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--color-text-faint);}
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+
+<!-- ===== HEADER ===== -->
+<header class="site-header" role="banner">
+  <div class="container">
+    <div class="header-inner">
+      <a href="#" class="logo" aria-label="ATOM Home">
+        <svg class="logo-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
+          <ellipse cx="18" cy="18" rx="10" ry="17" stroke="var(--color-primary)" stroke-width="1.5" fill="none"/>
+          <ellipse cx="18" cy="18" rx="17" ry="10" stroke="var(--color-primary)" stroke-width="1.5" fill="none" opacity="0.5"/>
+          <circle cx="18" cy="18" r="3" fill="var(--color-primary)"/>
+          <circle cx="18" cy="5" r="2" fill="var(--color-primary)" opacity="0.7"/>
+          <circle cx="18" cy="31" r="2" fill="var(--color-primary)" opacity="0.4"/>
+          <circle cx="5" cy="18" r="2" fill="var(--color-primary)" opacity="0.4"/>
+          <circle cx="31" cy="18" r="2" fill="var(--color-primary)" opacity="0.7"/>
+        </svg>
+        <span class="logo-text">AT<span>O</span>M</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#architecture">Architecture</a>
+        <a href="#evi">Hume EVI</a>
+        <a href="#llm">LLM Stack</a>
+        <a href="#call-flow">Call Flow</a>
+        <a href="#metrics">Metrics</a>
+      </nav>
+      <div class="header-actions">
+        <div class="status-badge" aria-label="System status: live">
+          <span class="status-dot" aria-hidden="true"></span>
+          ATOM LIVE
+        </div>
+        <button class="theme-toggle" data-theme-toggle aria-label="Switch to light mode">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== HERO ===== -->
+<main id="main">
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-bg" aria-hidden="true">
+    <img src="https://user-gen-media-assets.s3.amazonaws.com/gemini_images/8a293ea7-c541-4da6-a182-b96b445f5a4b.png" alt="" width="1600" height="900" loading="eager" />
+  </div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-eyebrow" aria-label="Architecture specification">
+        <i data-lucide="cpu" width="12" height="12" aria-hidden="true"></i>
+        Gold-Standard Voice AI Architecture · v4.0
+      </div>
+      <h1 id="hero-heading">ATOM is <span class="accent">emotionally<br/>intelligent.</span></h1>
+      <p class="hero-sub">Powered by Hume EVI's empathic LLM, Claude Sonnet/Opus for frontline dialog, and SambaCloud infrastructure — ATOM is the most advanced voice AI stack available for lead generation and campaign calling.</p>
+      <div class="hero-tags" role="list" aria-label="Tech stack tags">
+        <span class="tag tag--coral" role="listitem"><i data-lucide="heart-pulse" width="10" height="10" aria-hidden="true"></i> Hume EVI 4</span>
+        <span class="tag tag--purple" role="listitem"><i data-lucide="brain" width="10" height="10" aria-hidden="true"></i> Claude Opus</span>
+        <span class="tag tag--blue" role="listitem"><i data-lucide="zap" width="10" height="10" aria-hidden="true"></i> GPT-4o Tools</span>
+        <span class="tag tag--gold" role="listitem"><i data-lucide="server" width="10" height="10" aria-hidden="true"></i> SambaCloud</span>
+        <span class="tag tag--teal" role="listitem"><i data-lucide="phone-call" width="10" height="10" aria-hidden="true"></i> Twilio SIP</span>
+      </div>
+      <div class="hero-cta-row">
+        <a href="#architecture" class="btn btn--primary">
+          <i data-lucide="layers" width="16" height="16" aria-hidden="true"></i>
+          View Full Architecture
+        </a>
+        <a href="#call-flow" class="btn btn--ghost">
+          <i data-lucide="play-circle" width="16" height="16" aria-hidden="true"></i>
+          See Call Flow
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ===== METRICS ===== -->
+<section class="section section--tight" id="metrics" aria-labelledby="metrics-heading">
+  <div class="container">
+    <div class="metric-row fade-in">
+      <div class="metric-card">
+        <div class="metric-value metric-value--teal">100<span style="font-size:0.4em;opacity:0.7">ms</span></div>
+        <div class="metric-label">FIRST TOKEN LATENCY</div>
+        <div class="metric-note">Claude Sonnet via EVI streaming</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value metric-value--purple">200K</div>
+        <div class="metric-label">CONTEXT WINDOW</div>
+        <div class="metric-note">Claude — vs GPT-4o 128K</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value metric-value--teal">≈0</div>
+        <div class="metric-label">INTERRUPTION LATENCY</div>
+        <div class="metric-note">Vocal end-of-turn detection</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value metric-value--gold">24/7</div>
+        <div class="metric-label">UPTIME AVAILABILITY</div>
+        <div class="metric-note">SambaCloud enterprise infra</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value metric-value--teal">∞</div>
+        <div class="metric-label">CONCURRENT CALLS</div>
+        <div class="metric-note">Auto-scaling voice pods</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ===== ARCHITECTURE ===== -->
+<section class="section" id="architecture" aria-labelledby="arch-heading">
+  <div class="container container--wide">
+    <div class="section-label"><i data-lucide="layers" width="10" height="10" aria-hidden="true"></i> System Architecture</div>
+    <h2 class="section-heading" id="arch-heading">The ATOM Voice Stack</h2>
+    <p class="section-sub">A hybrid multi-LLM architecture engineered for zero-latency, emotionally intelligent lead generation calls — with no bottlenecks between voice input and response output.</p>
+
+    <div class="arch-diagram fade-in" role="img" aria-label="ATOM architecture diagram showing layers from user phone call to CRM">
+
+      <!-- Layer 0: Inbound -->
+      <div style="text-align:center;margin-bottom:var(--space-6);">
+        <div class="section-label" style="display:inline-flex;">
+          <i data-lucide="phone-incoming" width="10" height="10" aria-hidden="true"></i> LAYER 0 — INBOUND CALL ENTRY
+        </div>
+      </div>
+      <div class="arch-row arch-row--3" style="margin-bottom:var(--space-4);">
+        <div class="arch-node arch-node--glow-teal">
+          <div class="node-bg-accent node-bg-accent--teal"></div>
+          <div class="node-layer-badge" style="color:var(--color-primary)">📞 PSTN / VOIP</div>
+          <div class="node-title">Twilio SIP Trunk</div>
+          <div class="node-tech">twilio.com/sip</div>
+          <div class="node-desc">Handles inbound/outbound PSTN calls, WebRTC sessions, and programmable voice routing. Direct SIP connection to EVI — no voice transcoding proxy.</div>
+          <div class="pill-chips">
+            <span class="chip chip--teal">SIP Trunk</span>
+            <span class="chip chip--neutral">WebRTC</span>
+            <span class="chip chip--neutral">TwiML</span>
+          </div>
+        </div>
+        <div class="arch-connector" aria-hidden="true">
+          <div class="arch-connector-line"></div>
+          <i data-lucide="arrow-right" width="16" height="16" style="color:var(--color-primary)"></i>
+          <div class="arch-connector-line arch-connector-line--rev"></div>
+        </div>
+        <div class="arch-node arch-node--glow-teal arch-node--center" style="background:linear-gradient(135deg,var(--color-surface-2),var(--color-surface-3));">
+          <div class="node-bg-accent node-bg-accent--teal" style="width:120px;height:120px;opacity:0.08;"></div>
+          <div class="node-layer-badge" style="color:var(--color-primary)">🤖 ATOM AGENT CORE</div>
+          <div class="node-title" style="font-size:var(--text-xl);">ATOM</div>
+          <div class="node-tech">Lead Gen + Campaign Engine</div>
+          <div class="node-desc">Orchestrates all layers. Manages persona, context state, tool dispatch, CRM sync, and call lifecycle across every conversation.</div>
+          <div class="pill-chips" style="justify-content:center;">
+            <span class="chip chip--teal">Nirmata Core</span>
+            <span class="chip chip--coral">EVI-Powered</span>
+            <span class="chip chip--purple">Claude</span>
+          </div>
+        </div>
+        <div class="arch-connector" aria-hidden="true">
+          <div class="arch-connector-line"></div>
+          <i data-lucide="arrow-right" width="16" height="16" style="color:var(--color-primary)"></i>
+          <div class="arch-connector-line arch-connector-line--rev"></div>
+        </div>
+        <div class="arch-node arch-node--glow-teal">
+          <div class="node-bg-accent node-bg-accent--teal"></div>
+          <div class="node-layer-badge" style="color:var(--color-primary)">📤 OUTBOUND</div>
+          <div class="node-title">Campaign Dialer</div>
+          <div class="node-tech">Twilio Programmable Voice</div>
+          <div class="node-desc">Powers ATOM Campaign: auto-dials lead lists, manages call pacing, handles voicemail detection, and triggers post-call workflows.</div>
+          <div class="pill-chips">
+            <span class="chip chip--teal">Auto-Dial</span>
+            <span class="chip chip--neutral">AMD</span>
+            <span class="chip chip--neutral">Call Pacing</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrow down -->
+      <div style="display:flex;justify-content:center;margin-bottom:var(--space-4);" aria-hidden="true">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1);">
+          <div style="width:2px;height:24px;background:linear-gradient(to bottom,var(--color-primary),transparent);border-radius:1px;"></div>
+          <i data-lucide="chevrons-down" width="16" height="16" style="color:var(--color-primary);opacity:0.7"></i>
+        </div>
+      </div>
+
+      <!-- Layer 1: EVI -->
+      <div style="text-align:center;margin-bottom:var(--space-4);">
+        <div class="section-label" style="display:inline-flex;">
+          <i data-lucide="heart-pulse" width="10" height="10" aria-hidden="true"></i> LAYER 1 — EMPATHIC VOICE ENGINE
+        </div>
+      </div>
+      <div class="arch-row arch-row--single" style="margin-bottom:var(--space-4);">
+        <div class="arch-node arch-node--glow-coral" style="background:linear-gradient(135deg,var(--color-surface-2),rgba(255,123,107,0.03));">
+          <div class="node-bg-accent node-bg-accent--coral" style="width:150px;height:150px;opacity:0.07;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-6);">
+            <div>
+              <div class="node-layer-badge" style="color:var(--color-hume);">🎙️ PROSODY ENGINE</div>
+              <div class="node-title">Emotion Detection</div>
+              <div class="node-desc" style="color:var(--color-text-muted);">Analyzes tune, rhythm, timbre, and emotional cues in real-time. Detects happiness, anxiety, determination, frustration, and 20+ emotional states from voice alone.</div>
+              <div class="pill-chips"><span class="chip chip--coral">Real-time</span><span class="chip chip--neutral">20+ Emotions</span></div>
+            </div>
+            <div>
+              <div class="node-layer-badge" style="color:var(--color-hume);">🧠 eLLM CORE</div>
+              <div class="node-title">Hume EVI 4</div>
+              <div class="node-tech">Empathic Large Language Model</div>
+              <div class="node-desc" style="color:var(--color-text-muted);">Proprietary architecture that processes words AND emotional tone simultaneously. Generates responses calibrated to both linguistic content and emotional state of the caller.</div>
+              <div class="pill-chips"><span class="chip chip--coral">SambaCloud</span><span class="chip chip--neutral">eLLM</span></div>
+            </div>
+            <div>
+              <div class="node-layer-badge" style="color:var(--color-hume);">🔊 OCTAVE TTS</div>
+              <div class="node-title">Expressive Synthesis</div>
+              <div class="node-desc" style="color:var(--color-text-muted);">Hume's Octave TTS model generates emotionally modulated, natural-sounding speech. Output prosody mirrors the emotional register of the response — not flat robotic TTS.</div>
+              <div class="pill-chips"><span class="chip chip--coral">Octave v2</span><span class="chip chip--neutral">Expressive</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrow down -->
+      <div style="display:flex;justify-content:center;margin-bottom:var(--space-4);" aria-hidden="true">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1);">
+          <div style="width:2px;height:24px;background:linear-gradient(to bottom,var(--color-claude),transparent);border-radius:1px;"></div>
+          <i data-lucide="chevrons-down" width="16" height="16" style="color:var(--color-claude);opacity:0.7"></i>
+        </div>
+      </div>
+
+      <!-- Layer 2: LLM -->
+      <div style="text-align:center;margin-bottom:var(--space-4);">
+        <div class="section-label" style="display:inline-flex;">
+          <i data-lucide="brain" width="10" height="10" aria-hidden="true"></i> LAYER 2 — LANGUAGE INTELLIGENCE
+        </div>
+      </div>
+      <div class="arch-row arch-row--3" style="margin-bottom:var(--space-4);">
+        <div class="arch-node arch-node--glow-purple">
+          <div class="node-bg-accent node-bg-accent--purple"></div>
+          <div class="node-layer-badge" style="color:var(--color-claude);">🎙️ FRONTLINE DIALOG</div>
+          <div class="node-title">Claude Sonnet/Opus</div>
+          <div class="node-tech">Anthropic · via Hume EVI</div>
+          <div class="node-desc">Primary conversational backbone. 100–200ms first-token latency. 200K context holds entire sales history + company RAG data. Natural phrasing pairs flawlessly with Octave TTS.</div>
+          <div class="pill-chips">
+            <span class="chip chip--purple">200K Context</span>
+            <span class="chip chip--purple">~150ms Latency</span>
+            <span class="chip chip--neutral">RAG-Ready</span>
+          </div>
+        </div>
+        <div class="arch-connector" aria-hidden="true">
+          <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--color-text-faint);text-align:center;padding:0 var(--space-2);">TOOL<br/>DISPATCH</div>
+          <i data-lucide="arrow-right-left" width="14" height="14" style="color:var(--color-text-faint)"></i>
+        </div>
+        <div class="arch-node arch-node--glow-blue">
+          <div class="node-bg-accent node-bg-accent--blue"></div>
+          <div class="node-layer-badge" style="color:var(--color-gpt);">⚙️ TOOL EXECUTION</div>
+          <div class="node-title">GPT-4o</div>
+          <div class="node-tech">OpenAI · Structured Output</div>
+          <div class="node-desc">Handles structured tool calls only: CRM writes, demo bookings, workflow triggers, JSON formatting. Offloaded from Claude to preserve conversational latency for dialog.</div>
+          <div class="pill-chips">
+            <span class="chip chip--blue">CRM Writes</span>
+            <span class="chip chip--blue">JSON Tools</span>
+            <span class="chip chip--neutral">Async</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrow down -->
+      <div style="display:flex;justify-content:center;margin-bottom:var(--space-4);" aria-hidden="true">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1);">
+          <div style="width:2px;height:24px;background:linear-gradient(to bottom,var(--color-samba),transparent);border-radius:1px;"></div>
+          <i data-lucide="chevrons-down" width="16" height="16" style="color:var(--color-samba);opacity:0.7"></i>
+        </div>
+      </div>
+
+      <!-- Layer 3: Knowledge + Infra -->
+      <div style="text-align:center;margin-bottom:var(--space-4);">
+        <div class="section-label" style="display:inline-flex;">
+          <i data-lucide="database" width="10" height="10" aria-hidden="true"></i> LAYER 3 — KNOWLEDGE & INFRASTRUCTURE
+        </div>
+      </div>
+      <div class="arch-row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:var(--space-4);">
+        <div class="arch-node arch-node--glow-purple">
+          <div class="node-bg-accent node-bg-accent--purple"></div>
+          <div class="node-layer-badge" style="color:var(--color-claude);">📚 RAG ENGINE</div>
+          <div class="node-title">Claude 200K Context</div>
+          <div class="node-tech">Vector + In-Context Retrieval</div>
+          <div class="node-desc">Company data, product info, objection scripts, and lead history fit entirely in-context. Claude's 200K window eliminates chunking errors common in smaller-context RAG.</div>
+          <div class="pill-chips"><span class="chip chip--purple">Full Context</span><span class="chip chip--neutral">Pinecone</span></div>
+        </div>
+        <div class="arch-node arch-node--glow-gold">
+          <div class="node-bg-accent node-bg-accent--gold"></div>
+          <div class="node-layer-badge" style="color:var(--color-samba);">☁️ INFRA</div>
+          <div class="node-title">SambaCloud</div>
+          <div class="node-tech">Enterprise Voice AI Hosting</div>
+          <div class="node-desc">Exclusive enterprise host for Hume EVI 4 — the fastest and most scalable emotional voice AI deployment. Auto-scaling, human-like speeds, enterprise SLA.</div>
+          <div class="pill-chips"><span class="chip chip--gold">EVI 4 Exclusive</span><span class="chip chip--neutral">Auto-Scale</span></div>
+        </div>
+        <div class="arch-node arch-node--glow-teal">
+          <div class="node-bg-accent node-bg-accent--teal"></div>
+          <div class="node-layer-badge" style="color:var(--color-primary);">🔄 CRM SYNC</div>
+          <div class="node-title">Real-Time Data Layer</div>
+          <div class="node-tech">Salesforce / HubSpot / Custom</div>
+          <div class="node-desc">GPT-4o writes structured call summaries, lead scores, disposition codes, and follow-up tasks to CRM immediately post-call. Zero manual entry.</div>
+          <div class="pill-chips"><span class="chip chip--teal">Auto-Write</span><span class="chip chip--neutral">Webhooks</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ===== EVI DEEP DIVE ===== -->
+<section class="section" id="evi" aria-labelledby="evi-heading">
+  <div class="container">
+    <div class="section-label"><i data-lucide="heart-pulse" width="10" height="10" aria-hidden="true"></i> Hume EVI Deep Dive</div>
+    <h2 class="section-heading" id="evi-heading">What Makes EVI Different</h2>
+    <p class="section-sub">Traditional voice AI chains three separate systems and introduces latency at every seam. Hume EVI fuses them into a single empathic loop.</p>
+
+    <div class="evi-grid">
+      <!-- VS Comparison -->
+      <div class="evi-card evi-card--full fade-in">
+        <div class="evi-vs">
+          <div class="pipeline-old">
+            <div class="pipeline-label pipeline-label--old">
+              <i data-lucide="x-circle" width="12" height="12" aria-hidden="true"></i>
+              Standard Voice AI — 3 Separate Systems
+            </div>
+            <div class="pipeline-steps">
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--red"><i data-lucide="mic" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>Speech-to-Text</strong> (STT) — words only, emotion lost</div>
+              </div>
+              <div class="pipeline-arrow">↓ latency gap + handoff</div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--red"><i data-lucide="cpu" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>LLM</strong> — processes text, no emotional context</div>
+              </div>
+              <div class="pipeline-arrow">↓ latency gap + handoff</div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--red"><i data-lucide="volume-2" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>Text-to-Speech</strong> — flat robotic output</div>
+              </div>
+              <div class="pipeline-arrow">↓ silence detection (high error rate)</div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--red"><i data-lucide="timer" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>End-of-turn</strong> — timer/silence (interrupts mid-sentence)</div>
+              </div>
+            </div>
+          </div>
+          <div class="vs-badge" aria-hidden="true">VS</div>
+          <div class="pipeline-new">
+            <div class="pipeline-label pipeline-label--new">
+              <i data-lucide="check-circle" width="12" height="12" aria-hidden="true"></i>
+              Hume EVI — Fused Empathic Loop
+            </div>
+            <div class="pipeline-steps">
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--teal"><i data-lucide="activity" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>Prosody + Emotion Detection</strong> — words + emotional cues simultaneously</div>
+              </div>
+              <div class="pipeline-arrow" style="color:var(--color-primary);">↓ fused — no handoff latency</div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--teal"><i data-lucide="brain" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>eLLM (Claude)</strong> — linguistically + emotionally calibrated response</div>
+              </div>
+              <div class="pipeline-arrow" style="color:var(--color-primary);">↓ fused — direct to synthesis</div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--teal"><i data-lucide="waveform" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>Octave TTS</strong> — emotionally modulated, natural-sounding speech</div>
+              </div>
+              <div class="pipeline-arrow" style="color:var(--color-primary);">↓ vocal signal detection (near-zero error)</div>
+              <div class="pipeline-step">
+                <div class="pipeline-step-icon pipeline-step-icon--teal"><i data-lucide="mic-off" width="12" height="12" aria-hidden="true"></i></div>
+                <div><strong>End-of-turn via vocal signals</strong> — no mid-sentence interruptions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVI Features -->
+      <div class="evi-card">
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);">
+          <div class="why-card-icon why-card-icon--coral" style="margin-bottom:0;"><i data-lucide="activity" width="18" height="18" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom:0;">Prosody & Emotion Analysis</h3>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);">Real-time analysis of tune, rhythm, timbre, and voice cadence to detect 20+ emotional states — happiness, anxiety, determination, hesitation — with zero transcript delay.</p>
+        <div class="pill-chips">
+          <span class="chip chip--coral">20+ Emotions</span>
+          <span class="chip chip--neutral">Real-time</span>
+          <span class="chip chip--neutral">No STT Delay</span>
+        </div>
+      </div>
+      <div class="evi-card">
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);">
+          <div class="why-card-icon why-card-icon--purple" style="margin-bottom:0;"><i data-lucide="brain" width="18" height="18" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom:0;">eLLM — Empathic Core</h3>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);">Hume's proprietary Empathic LLM architecture ingests both transcription and emotional tone vectors simultaneously — generating responses that are calibrated to <em>how</em> someone said something, not just what they said.</p>
+        <div class="pill-chips">
+          <span class="chip chip--purple">Dual-Stream</span>
+          <span class="chip chip--neutral">Tone-Aware</span>
+        </div>
+      </div>
+      <div class="evi-card">
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);">
+          <div class="why-card-icon why-card-icon--teal" style="margin-bottom:0;"><i data-lucide="volume-2" width="18" height="18" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom:0;">Octave TTS — Expressive Output</h3>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);">Hume's Octave text-to-speech model doesn't just speak words — it modulates prosody, pacing, and emotional register based on the response context. ATOM sounds human because the synthesis mirrors the emotional intent of every sentence.</p>
+        <div class="pill-chips">
+          <span class="chip chip--teal">Emotional Prosody</span>
+          <span class="chip chip--neutral">Octave v2</span>
+        </div>
+      </div>
+      <div class="evi-card">
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);">
+          <div class="why-card-icon why-card-icon--gold" style="margin-bottom:0;"><i data-lucide="timer" width="18" height="18" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom:0;">Vocal End-of-Turn Detection</h3>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);">Instead of silence timers that interrupt mid-thought, EVI reads vocal cues — natural sentence completion signals in the human voice — to detect when the caller has actually finished speaking. Near-zero false interruptions.</p>
+        <div class="pill-chips">
+          <span class="chip chip--gold">≈0ms Interrupt Error</span>
+          <span class="chip chip--neutral">Vocal Signals</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ===== WHY CLAUDE ===== -->
+<section class="section" id="llm" aria-labelledby="llm-heading">
+  <div class="container">
+    <div class="section-label"><i data-lucide="brain" width="10" height="10" aria-hidden="true"></i> LLM Strategy</div>
+    <h2 class="section-heading" id="llm-heading">Why Claude Leads ATOM's Dialog</h2>
+    <p class="section-sub">For a lead generation voice agent, the LLM backbone is the most performance-critical choice. The data decisively points to one answer for frontline dialog.</p>
+
+    <div class="why-grid fade-in">
+      <div class="why-card">
+        <div class="why-card-icon why-card-icon--teal"><i data-lucide="zap" width="18" height="18" aria-hidden="true"></i></div>
+        <h3>Fastest Voice Streaming</h3>
+        <p>Claude consistently delivers first tokens within 100–200ms with smooth, predictable streaming — the critical requirement for a voice agent that can't feel robotic or lag mid-sentence.</p>
+        <div class="why-card-stat"><strong>~150ms</strong> first-token latency · vs GPT-4o ~200ms in dialog</div>
+      </div>
+      <div class="why-card">
+        <div class="why-card-icon why-card-icon--purple"><i data-lucide="archive" width="18" height="18" aria-hidden="true"></i></div>
+        <h3>200K Token Context</h3>
+        <p>ATOM needs to hold long sales conversations, remember prior exchanges, and reference company info from RAG. Claude's 200K context window carries far more conversational memory without truncating.</p>
+        <div class="why-card-stat">Claude <strong>200K</strong> vs GPT-4o <strong>128K</strong> context window</div>
+      </div>
+      <div class="why-card">
+        <div class="why-card-icon why-card-icon--coral"><i data-lucide="message-circle" width="18" height="18" aria-hidden="true"></i></div>
+        <h3>Natural Tone for TTS</h3>
+        <p>Claude produces smooth, realistic phrasing that pairs exceptionally well with Hume's Octave TTS engine. It "speaks" in a way that feels like a human — not a structured AI output.</p>
+        <div class="why-card-stat">Expert consensus: <strong>"Use Claude for frontline dialog"</strong></div>
+      </div>
+      <div class="why-card">
+        <div class="why-card-icon why-card-icon--gold"><i data-lucide="settings" width="18" height="18" aria-hidden="true"></i></div>
+        <h3>GPT-4o for Tool Calls</h3>
+        <p>GPT-4o handles CRM writes, demo bookings, and JSON tool execution. Its structured output reliability and function-calling precision make it ideal for async background operations.</p>
+        <div class="why-card-stat">GPT-4o: <strong>structured JSON</strong>, tool calls, async ops only</div>
+      </div>
+    </div>
+
+    <!-- Stack comparison table -->
+    <div style="margin-top:var(--space-12);">
+      <div class="stack-table-wrap fade-in">
+        <table class="stack-table" aria-label="ATOM LLM layer comparison">
+          <thead>
+            <tr>
+              <th scope="col">Layer</th>
+              <th scope="col">Technology</th>
+              <th scope="col">Model</th>
+              <th scope="col">Why This Choice</th>
+              <th scope="col">Replaces</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="layer-name">Conversational Dialog</span></td>
+              <td><span class="tag tag--purple" style="display:inline-flex;">Claude Sonnet/Opus</span></td>
+              <td><span class="tech-name">Anthropic via EVI</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">Natural tone, 200K context, ~150ms latency, ideal for open-ended lead gen conversations</td>
+              <td><span class="chip chip--neutral">GPT-4o (dialog)</span></td>
+            </tr>
+            <tr>
+              <td><span class="layer-name">Tool Calls / CRM</span></td>
+              <td><span class="tag tag--blue" style="display:inline-flex;">GPT-4o</span></td>
+              <td><span class="tech-name">OpenAI structured output</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">JSON reliability, function-calling precision, async execution without impacting voice latency</td>
+              <td><span class="chip chip--neutral">Manual CRM</span></td>
+            </tr>
+            <tr>
+              <td><span class="layer-name">Emotional Voice Layer</span></td>
+              <td><span class="tag tag--coral" style="display:inline-flex;">Hume EVI 4</span></td>
+              <td><span class="tech-name">SambaCloud Enterprise</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">Prosody + empathy detection, Octave TTS, vocal end-of-turn — exclusive EVI 4 on SambaCloud</td>
+              <td><span class="chip chip--neutral">Akamai Linode Bridge</span></td>
+            </tr>
+            <tr>
+              <td><span class="layer-name">RAG / Knowledge Base</span></td>
+              <td><span class="tag tag--purple" style="display:inline-flex;">Claude 200K</span></td>
+              <td><span class="tech-name">In-context + Pinecone</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">Full company data fits in-context — eliminates chunking errors and retrieval latency</td>
+              <td><span class="chip chip--neutral">Chunked RAG</span></td>
+            </tr>
+            <tr>
+              <td><span class="layer-name">Speech Synthesis</span></td>
+              <td><span class="tag tag--coral" style="display:inline-flex;">Hume Octave TTS</span></td>
+              <td><span class="tech-name">Emotionally modulated</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">Prosody, pacing, and emotional register matched to response context — not flat TTS</td>
+              <td><span class="chip chip--neutral">ElevenLabs / Deepgram</span></td>
+            </tr>
+            <tr>
+              <td><span class="layer-name">Call Infrastructure</span></td>
+              <td><span class="tag tag--teal" style="display:inline-flex;">Twilio SIP</span></td>
+              <td><span class="tech-name">Direct SIP to EVI</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">Direct SIP connection eliminates the Akamai Linode voice bridge bottleneck entirely</td>
+              <td><span class="chip chip--neutral">Akamai Linode</span></td>
+            </tr>
+            <tr>
+              <td><span class="layer-name">Hosting / Scale</span></td>
+              <td><span class="tag tag--gold" style="display:inline-flex;">SambaCloud</span></td>
+              <td><span class="tech-name">Enterprise VoiceAI</span></td>
+              <td style="color:var(--color-text-muted);font-size:var(--text-xs);">Exclusive EVI 4 hosting. Fastest emotional voice AI at human-like speeds. Enterprise SLA.</td>
+              <td><span class="chip chip--neutral">Generic Cloud</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ===== CALL FLOW ===== -->
+<section class="section" id="call-flow" aria-labelledby="flow-heading">
+  <div class="container">
+    <div class="section-label"><i data-lucide="play-circle" width="10" height="10" aria-hidden="true"></i> Real-Time Call Flow</div>
+    <h2 class="section-heading" id="flow-heading">What Happens on Every Call</h2>
+    <p class="section-sub">From the moment a lead picks up to the CRM update — the complete signal path through the ATOM stack, in sequence.</p>
+
+    <div class="flow-section fade-in" role="list" aria-label="Call processing steps">
+
+      <div class="flow-header">
+        <div class="why-card-icon why-card-icon--teal" style="margin-bottom:0;"><i data-lucide="phone-call" width="18" height="18" aria-hidden="true"></i></div>
+        <div>
+          <div style="font-family:var(--font-display);font-weight:700;">ATOM Lead Gen / Campaign Call</div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-faint);font-family:var(--font-mono);">Full-stack signal path · ~100–200ms total response latency</div>
+        </div>
+      </div>
+
+      <div class="flow-step-list">
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--teal">01</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">Twilio SIP Trunk — Call Initiated</div>
+            <div class="flow-step-meta">twilio.com · PSTN / WebRTC · Outbound or Inbound</div>
+            <div class="flow-step-desc">Twilio routes the call via SIP directly to the Hume EVI endpoint on SambaCloud. No Akamai Linode proxy — the voice bridge bottleneck is eliminated. For ATOM Campaign, the auto-dialer initiates the outbound call with AMD (answering machine detection) pre-filter.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--coral">02</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">Hume EVI 4 — Prosody &amp; Emotion Capture</div>
+            <div class="flow-step-meta">SambaCloud · EVI 4 · Real-time prosody analysis</div>
+            <div class="flow-step-desc">As the lead speaks, EVI simultaneously transcribes speech AND extracts emotional vectors — tone, rhythm, timbre, cadence. Happiness, anxiety, determination, hesitation are all detected in real-time without waiting for an STT transcript to complete.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--coral">03</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">Vocal End-of-Turn Signal Detected</div>
+            <div class="flow-step-meta">EVI vocal signal detection · ≈0ms interruption error</div>
+            <div class="flow-step-desc">EVI detects natural speech completion via vocal cues — not a silence timer. This prevents the signature flaw of traditional voice AI: interrupting mid-thought. ATOM waits for the lead to actually finish speaking before responding.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--purple">04</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">Claude Sonnet/Opus — Response Generation</div>
+            <div class="flow-step-meta">Anthropic via Hume EVI · 200K context · ~100–200ms first token</div>
+            <div class="flow-step-desc">The eLLM feeds transcript + emotional context to Claude. Claude accesses the full conversation history (200K tokens), company RAG data, lead profile, and objection scripts — generating a response calibrated to both the content and emotional state of the caller. First tokens arrive in ~100–200ms.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--coral">05</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">Octave TTS — Emotionally Modulated Speech</div>
+            <div class="flow-step-meta">Hume Octave v2 · Expressive synthesis · Streaming output</div>
+            <div class="flow-step-desc">Claude's response streams directly into Octave TTS, which generates speech with prosody, pacing, and emotional register matched to the response intent. ATOM doesn't sound robotic — it sounds like a confident, empathetic human agent.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--teal">06</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">ATOM Lead Gen Logic — Qualification &amp; Routing</div>
+            <div class="flow-step-meta">ATOM Core · Nirmata Holdings · Real-time decision engine</div>
+            <div class="flow-step-desc">In parallel with conversation, ATOM's lead gen engine scores the prospect, tracks qualification milestones, handles objections with pre-calibrated response trees, and decides whether to push to booking, nurture, or disengage — all within the natural flow of conversation.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--blue">07</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">GPT-4o — Tool Calls &amp; CRM Writes</div>
+            <div class="flow-step-meta">OpenAI · Async structured output · Background execution</div>
+            <div class="flow-step-desc">While Claude handles conversation, GPT-4o executes async tool calls: writing to Salesforce/HubSpot, booking demo calendar slots, triggering follow-up sequences, and logging structured call summaries. Isolated from the voice loop so tool execution never adds latency to ATOM's responses.</div>
+          </div>
+        </div>
+        <div class="flow-step" role="listitem">
+          <div class="flow-step-num"><div class="step-circle step-circle--gold">08</div></div>
+          <div class="flow-step-body">
+            <div class="flow-step-title">Post-Call — Sync, Score &amp; Schedule</div>
+            <div class="flow-step-meta">CRM · Pinecone Vector DB · ATOM Campaign Queue</div>
+            <div class="flow-step-desc">On call end: full transcript + emotion timeline logged, lead score updated, disposition tagged (qualified/nurture/DNC), follow-up task created, and call recording linked. ATOM Campaign queues the next action automatically based on call outcome.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ===== CALLOUT ===== -->
+<section class="section section--tight" aria-label="Architecture summary callout">
+  <div class="container">
+    <div class="callout fade-in">
+      <div class="callout-icon"><i data-lucide="rocket" width="22" height="22" aria-hidden="true"></i></div>
+      <div class="callout-text">
+        <h3>The Bleeding-Edge Stack for ATOM's Lead Gen Mission</h3>
+        <p>EVI 4 (SambaCloud) + Claude Sonnet/Opus + GPT-4o tool layer + Twilio direct SIP — this is the absolute gold-standard architecture for emotionally intelligent, high-performance voice AI. No Akamai Linode bridge. No latency bottlenecks. No flat robotic TTS. ATOM calls feel human because every layer is engineered for exactly that.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        ATOM Voice Stack · Nirmata Holdings · © 2026
+      </div>
+      <div class="footer-links">
+        <a href="https://hume.ai" target="_blank" rel="noopener noreferrer">Hume EVI</a>
+        <a href="https://anthropic.com" target="_blank" rel="noopener noreferrer">Claude</a>
+        <a href="https://sambanova.ai" target="_blank" rel="noopener noreferrer">SambaCloud</a>
+        <a href="https://twilio.com" target="_blank" rel="noopener noreferrer">Twilio</a>
+        <a href="https://openai.com" target="_blank" rel="noopener noreferrer">GPT-4o</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+(function(){
+  const t = document.querySelector('[data-theme-toggle]');
+  const r = document.documentElement;
+  let d = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  r.setAttribute('data-theme', d);
+  if(t) {
+    const icons = {
+      dark: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+      light: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+    };
+    t.innerHTML = icons[d];
+    t.addEventListener('click', () => {
+      d = d === 'dark' ? 'light' : 'dark';
+      r.setAttribute('data-theme', d);
+      t.setAttribute('aria-label', 'Switch to ' + (d === 'dark' ? 'light' : 'dark') + ' mode');
+      t.innerHTML = icons[d];
+    });
+  }
+})();
+
+// Init Lucide icons
+document.addEventListener('DOMContentLoaded', () => {
+  if(window.lucide) lucide.createIcons();
+});
+
+// Animate metric values
+document.addEventListener('DOMContentLoaded', () => {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.2 });
+
+  document.querySelectorAll('.metric-card').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(16px)';
+    card.style.transition = `opacity 0.5s ease ${i * 80}ms, transform 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 80}ms`;
+    obs.observe(card);
+  });
+
+  document.querySelectorAll('.why-card, .evi-card').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(12px)';
+    card.style.transition = `opacity 0.4s ease ${i * 60}ms, transform 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 60}ms`;
+    obs.observe(card);
+  });
+});
+</script>
+</body>
+</html>

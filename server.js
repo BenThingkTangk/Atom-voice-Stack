@@ -613,11 +613,9 @@ app.register(async function (app) {
             // Check for pre-warmed Hume connection
             const prewarmed = prewarmedHume.get(callSid);
             if (prewarmed && prewarmed.humeWs.readyState === WebSocket.OPEN) {
-              // USE PRE-WARMED CONNECTION — zero delay path
               humeWs = prewarmed.humeWs;
               humeReady = prewarmed.ready;
               prewarmedHume.delete(callSid);
-              log(`[${callSid}] Using pre-warmed Hume (${prewarmed.greetingAudioChunks.length} chunks, done: ${prewarmed.greetingDone})`);
 
               // Strip pre-warm listeners, attach live bridge listeners
               humeWs.removeAllListeners('message');
@@ -625,13 +623,15 @@ app.register(async function (app) {
               humeWs.removeAllListeners('error');
               attachHumeListeners(humeWs);
 
-              // HOLD greeting — don't flush until the caller says hello
-              if (prewarmed.greetingAudioChunks.length > 0) {
+              // ONLY use pre-buffered greeting if it's FULLY generated.
+              // Partial greeting = garbled audio + confused Hume state.
+              // If not ready, let Hume generate greeting in real-time.
+              if (prewarmed.greetingDone && prewarmed.greetingAudioChunks.length >= 3) {
+                log(`[${callSid}] Pre-warm: greeting READY (${prewarmed.greetingAudioChunks.length} chunks) — buffering for hello-wait`);
                 pendingGreeting = {
                   chunks: prewarmed.greetingAudioChunks,
                   text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
                 };
-                log(`[${callSid}] Greeting buffered (${prewarmed.greetingAudioChunks.length} chunks) — waiting for caller to speak`);
 
                 // Safety: if caller doesn't speak within 3s, flush anyway
                 setTimeout(() => {
@@ -655,6 +655,12 @@ app.register(async function (app) {
                     pendingGreeting = null;
                   }
                 }, 3000);
+              } else {
+                // Greeting not ready — let Hume handle it in real-time.
+                // EVI will generate the greeting via eLLM + Octave TTS naturally.
+                // This is the cleanest path — no pre-buffer, no artificial timing.
+                greetingFlushed = true; // skip hello-wait logic
+                log(`[${callSid}] Pre-warm: greeting NOT ready (${prewarmed.greetingAudioChunks.length} chunks, done: ${prewarmed.greetingDone}) — letting EVI handle greeting in real-time`);
               }
             } else {
               // FALLBACK: Pre-warm missed or closed — connect fresh

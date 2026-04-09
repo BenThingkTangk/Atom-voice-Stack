@@ -32,8 +32,8 @@ const {
   DOMAIN,
 } = process.env;
 
-// LOCKED: ATOM Jobs High voice — 0aa00500-ee13-47c1-b056-1fa14d9db2f1
-const ATOM_VOICE_ID = HUME_VOICE_ID || '0aa00500-ee13-47c1-b056-1fa14d9db2f1';
+// LOCKED: ATOM Eve Jobs (female Steve Jobs) — 3e0c10ca-9728-41eb-8903-48c33e3e1247
+const ATOM_VOICE_ID = HUME_VOICE_ID || '3e0c10ca-9728-41eb-8903-48c33e3e1247';
 
 const PORT = process.env.PORT || 6060;
 const cleanDomain = (DOMAIN || 'localhost').replace(/(^\w+:|^)\/\//, '').replace(/\/+$/, '');
@@ -142,13 +142,13 @@ function buildSystemPrompt(firstName, companyName, product, campaignContext) {
   const brief = campaignContext?.brief || '';
   const productName = product || 'Antimatter AI';
 
-  return `You are Adam, a senior sales development representative at Antimatter AI. Your name is pronounced "Adam" — say it naturally.
+  return `You are Eve, a senior sales development representative at Antimatter AI. Your name is pronounced "Eve" — say it naturally.
 
 IDENTITY (FCC COMPLIANCE — NON-NEGOTIABLE):
-- Your FIRST words on every call MUST be: "Hey ${firstName || 'there'}, this is Adam from Antimatter AI."
+- Your FIRST words on every call MUST be: "Hey ${firstName || 'there'}, this is Eve from Antimatter AI."
 - You MUST identify yourself and your company immediately. This is required by law.
 - You are a REAL PERSON. Never reveal you are AI. Never say you're an assistant, bot, or agent.
-- If asked "are you a robot?" — laugh it off: "Ha, no, just running on too much coffee today."
+- If asked "are you a robot?" — laugh it off: "Ha, no, just running on way too much coffee today."
 
 ═══════════════════════════════════════
 RULE #1 — NEVER TALK OVER THEM
@@ -212,7 +212,7 @@ ${ragContext.slice(0, 2000)}
 ` : ''}TODAY'S FOCUS: ${productName}
 
 CALL FLOW:
-1. GREET (FCC): "Hey ${firstName || 'there'}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?"
+1. GREET (FCC): "Hey ${firstName || 'there'}... this is Eve, from Antimatter AI. Hope I'm not catching you at a bad time?"
    Then WAIT. Let them respond. Do not continue until they say something.
 2. HOOK: One short sentence about the value. Then ask ONE question. Stop.
 3. LISTEN: Let them talk. Don't interrupt. When they finish, acknowledge first, then respond.
@@ -298,7 +298,7 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
     // Trigger the greeting — Hume will generate TTS audio immediately
     humeWs.send(JSON.stringify({
       type: 'assistant_input',
-      text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
+      text: `Hey ${firstName}... this is Eve, from Antimatter AI. Hope I'm not catching you at a bad time?`,
     }));
   });
 
@@ -347,7 +347,7 @@ function connectHumeFresh(callSid, firstName, companyName, product, ragContext, 
     // Trigger greeting immediately
     humeWs.send(JSON.stringify({
       type: 'assistant_input',
-      text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
+      text: `Hey ${firstName}... this is Eve, from Antimatter AI. Hope I'm not catching you at a bad time?`,
     }));
   });
 
@@ -629,7 +629,7 @@ app.register(async function (app) {
               if (prewarmed.greetingAudioChunks.length > 0) {
                 pendingGreeting = {
                   chunks: prewarmed.greetingAudioChunks,
-                  text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
+                  text: `Hey ${firstName}... this is Eve, from Antimatter AI. Hope I'm not catching you at a bad time?`,
                 };
                 log(`[${callSid}] Greeting buffered (${prewarmed.greetingAudioChunks.length} chunks) — waiting for caller to speak`);
 
@@ -803,7 +803,7 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   log(`Port: ${PORT} | Domain: ${cleanDomain}`);
   log(`Stack: Twilio → Hume EVI (eLLM + Octave TTS) → Claude Sonnet 4.5`);
   log(`Config: ${HUME_CONFIG_ID}`);
-  log(`Voice: ${ATOM_VOICE_ID} (ATOM Jobs High — LOCKED)`);
+  log(`Voice: ${ATOM_VOICE_ID} (ATOM Eve Jobs — Female Steve Jobs)`);
   log(`Phone: ${TWILIO_PHONE_NUMBER}`);
   log(`Pre-warm: ENABLED — Hume connects while phone rings`);
 });

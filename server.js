@@ -443,6 +443,10 @@ app.register(async function (app) {
     let callSid = null;
     let humeWs = null;
     let humeReady = false;
+    let greetingFlushed = false;
+    let pendingGreeting = null; // { chunks: [], text: '' }
+    let callerSpokeFrames = 0;
+    const CALLER_SPEAK_THRESHOLD = 8; // ~160ms of voice before ATOM responds
 
     // ── Attach Hume event listeners to a WebSocket ───────────────────
     // This is called AFTER we have a valid humeWs reference — either
@@ -621,27 +625,36 @@ app.register(async function (app) {
               humeWs.removeAllListeners('error');
               attachHumeListeners(humeWs);
 
-              // Flush buffered greeting audio IMMEDIATELY — zero delay
+              // HOLD greeting — don't flush until the caller says hello
               if (prewarmed.greetingAudioChunks.length > 0) {
-                let totalMulawChunks = 0;
-                for (let ci = 0; ci < prewarmed.greetingAudioChunks.length; ci++) {
-                  const wavData = prewarmed.greetingAudioChunks[ci];
-                  try {
-                    const chunks = wavToMulawChunks(wavData);
-                    totalMulawChunks += chunks.length;
-                    for (const chunk of chunks) {
-                      socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
+                pendingGreeting = {
+                  chunks: prewarmed.greetingAudioChunks,
+                  text: `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`,
+                };
+                log(`[${callSid}] Greeting buffered (${prewarmed.greetingAudioChunks.length} chunks) — waiting for caller to speak`);
+
+                // Safety: if caller doesn't speak within 4s, flush anyway (they picked up but are silent)
+                setTimeout(() => {
+                  if (!greetingFlushed && pendingGreeting) {
+                    greetingFlushed = true;
+                    log(`[${callSid}] Greeting timeout — flushing after 4s silence`);
+                    let totalMulawChunks = 0;
+                    for (const wavData of pendingGreeting.chunks) {
+                      try {
+                        const chunks = wavToMulawChunks(wavData);
+                        totalMulawChunks += chunks.length;
+                        for (const chunk of chunks) {
+                          socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
+                        }
+                      } catch (e) {}
                     }
-                  } catch (flushErr) {
-                    log(`[${callSid}] Greeting flush error on chunk ${ci}: ${flushErr.message}`);
+                    log(`[${callSid}] Timeout flush — ${totalMulawChunks} mulaw chunks`);
+                    const call = activeCalls.get(callSid);
+                    if (call) call.transcript.push({ role: 'agent', text: pendingGreeting.text, ts: Date.now() });
+                    emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
+                    pendingGreeting = null;
                   }
-                }
-                log(`[${callSid}] Greeting flushed — ${totalMulawChunks} mulaw chunks sent from ${prewarmed.greetingAudioChunks.length} WAV chunks`);
-                // Also emit greeting transcript to frontend
-                const greetingText = `Hey ${firstName}... this is Adam, from Antimatter AI. Hope I'm not catching you at a bad time?`;
-                const call = activeCalls.get(callSid);
-                if (call) call.transcript.push({ role: 'agent', text: greetingText, ts: Date.now() });
-                emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: greetingText, ts: Date.now() });
+                }, 4000);
               }
             } else {
               // FALLBACK: Pre-warm missed or closed — connect fresh
@@ -667,6 +680,47 @@ app.register(async function (app) {
             break;
 
           case 'media':
+            // Detect caller voice — flush greeting after they say hello
+            if (!greetingFlushed && pendingGreeting) {
+              // Check if this audio frame has voice energy (not silence)
+              const raw = Buffer.from(data.media.payload, 'base64');
+              let energy = 0;
+              for (let i = 0; i < raw.length; i++) {
+                const sample = Math.abs(MULAW_DECODE[raw[i]]);
+                energy += sample;
+              }
+              const avgEnergy = energy / raw.length;
+              // mulaw silence is ~0-100, speech is typically 500+
+              if (avgEnergy > 300) {
+                callerSpokeFrames++;
+              } else {
+                callerSpokeFrames = Math.max(0, callerSpokeFrames - 1);
+              }
+
+              // Caller has spoken enough — flush the greeting
+              if (callerSpokeFrames >= CALLER_SPEAK_THRESHOLD) {
+                greetingFlushed = true;
+                log(`[${callSid}] Caller spoke — flushing greeting now`);
+                let totalMulawChunks = 0;
+                for (const wavData of pendingGreeting.chunks) {
+                  try {
+                    const chunks = wavToMulawChunks(wavData);
+                    totalMulawChunks += chunks.length;
+                    for (const chunk of chunks) {
+                      socket.send(JSON.stringify({ event: 'media', streamSid, media: { payload: chunk } }));
+                    }
+                  } catch (e) {
+                    log(`[${callSid}] Greeting flush error: ${e.message}`);
+                  }
+                }
+                log(`[${callSid}] Greeting flushed — ${totalMulawChunks} mulaw chunks`);
+                const call = activeCalls.get(callSid);
+                if (call) call.transcript.push({ role: 'agent', text: pendingGreeting.text, ts: Date.now() });
+                emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
+                pendingGreeting = null;
+              }
+            }
+
             // Forward caller audio to Hume (mulaw → PCM linear16)
             if (humeReady && humeWs?.readyState === WebSocket.OPEN) {
               const pcm = mulawToLinear16(data.media.payload);

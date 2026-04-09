@@ -27,9 +27,13 @@ dotenv.config();
 const {
   TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_PHONE_NUMBER,
   HUME_API_KEY, HUME_CONFIG_ID,
+  HUME_VOICE_ID,
   OPENAI_API_KEY,
   DOMAIN,
 } = process.env;
+
+// LOCKED: ATOM Jobs High voice — 0aa00500-ee13-47c1-b056-1fa14d9db2f1
+const ATOM_VOICE_ID = HUME_VOICE_ID || '0aa00500-ee13-47c1-b056-1fa14d9db2f1';
 
 const PORT = process.env.PORT || 6060;
 const cleanDomain = (DOMAIN || 'localhost').replace(/(^\w+:|^)\/\//, '').replace(/\/+$/, '');
@@ -284,9 +288,10 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
   humeWs.on('open', () => {
     log(`[${callSid}] Pre-warm: Hume EVI connected (${Date.now() - startTime}ms)`);
     state.ready = true;
-    // Configure audio format and inject system prompt + RAG context
+    // Configure audio format, lock voice, inject system prompt + RAG context
     humeWs.send(JSON.stringify({
       type: 'session_settings',
+      voice: { id: ATOM_VOICE_ID },
       audio: { encoding: 'linear16', sample_rate: TWILIO_RATE, channels: 1 },
       context: { text: buildSystemPrompt(firstName, companyName, product, { ragContext, brief }), type: 'persistent' },
     }));
@@ -335,6 +340,7 @@ function connectHumeFresh(callSid, firstName, companyName, product, ragContext, 
     log(`[${callSid}] Fresh Hume connection (${Date.now() - startTime}ms)`);
     humeWs.send(JSON.stringify({
       type: 'session_settings',
+      voice: { id: ATOM_VOICE_ID },
       audio: { encoding: 'linear16', sample_rate: TWILIO_RATE, channels: 1 },
       context: { text: buildSystemPrompt(firstName, companyName, product, { ragContext, brief }), type: 'persistent' },
     }));
@@ -743,6 +749,7 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   log(`Port: ${PORT} | Domain: ${cleanDomain}`);
   log(`Stack: Twilio → Hume EVI (eLLM + Octave TTS) → Claude Sonnet 4.5`);
   log(`Config: ${HUME_CONFIG_ID}`);
+  log(`Voice: ${ATOM_VOICE_ID} (ATOM Jobs High — LOCKED)`);
   log(`Phone: ${TWILIO_PHONE_NUMBER}`);
   log(`Pre-warm: ENABLED — Hume connects while phone rings`);
 });

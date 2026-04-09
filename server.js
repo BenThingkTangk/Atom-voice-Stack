@@ -32,8 +32,8 @@ const {
   DOMAIN,
 } = process.env;
 
-// LOCKED: ATOM Jobs 220 v2 (male Steve Jobs, max tightness+buoyancy for ~215-220 Hz)
-const ATOM_VOICE_ID = HUME_VOICE_ID || '75e93fea-12d8-447a-8dda-976ba062dcb0';
+// LOCKED: ATOM Jobs 250 (male Steve Jobs, max pitch push for ~250 Hz)
+const ATOM_VOICE_ID = HUME_VOICE_ID || '863032e6-762b-4397-8ebd-ca3581fbc385';
 
 const PORT = process.env.PORT || 6060;
 const cleanDomain = (DOMAIN || 'localhost').replace(/(^\w+:|^)\/\//, '').replace(/\/+$/, '');
@@ -446,7 +446,9 @@ app.register(async function (app) {
     let greetingFlushed = false;
     let pendingGreeting = null; // { chunks: [], text: '' }
     let callerSpokeFrames = 0;
-    const CALLER_SPEAK_THRESHOLD = 8; // ~160ms of voice before ATOM responds
+    let greetingFlushTime = 0; // timestamp when greeting was sent
+    const CALLER_SPEAK_THRESHOLD = 15; // ~300ms of sustained voice = real "hello"
+    const POST_GREETING_SILENCE_MS = 2000; // 2s after greeting before forwarding audio to Hume
 
     // ── Attach Hume event listeners to a WebSocket ───────────────────
     // This is called AFTER we have a valid humeWs reference — either
@@ -633,11 +635,12 @@ app.register(async function (app) {
                 };
                 log(`[${callSid}] Greeting buffered (${prewarmed.greetingAudioChunks.length} chunks) — waiting for caller to speak`);
 
-                // Safety: if caller doesn't speak within 4s, flush anyway (they picked up but are silent)
+                // Safety: if caller doesn't speak within 5s, flush anyway (they picked up but are silent)
                 setTimeout(() => {
                   if (!greetingFlushed && pendingGreeting) {
                     greetingFlushed = true;
-                    log(`[${callSid}] Greeting timeout — flushing after 4s silence`);
+                    greetingFlushTime = Date.now();
+                    log(`[${callSid}] Greeting timeout — flushing after 5s silence`);
                     let totalMulawChunks = 0;
                     for (const wavData of pendingGreeting.chunks) {
                       try {
@@ -654,7 +657,7 @@ app.register(async function (app) {
                     emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
                     pendingGreeting = null;
                   }
-                }, 4000);
+                }, 5000);
               }
             } else {
               // FALLBACK: Pre-warm missed or closed — connect fresh
@@ -680,26 +683,25 @@ app.register(async function (app) {
             break;
 
           case 'media':
-            // Detect caller voice — flush greeting after they say hello
+            // PHASE 1: Wait for caller to say hello before playing greeting
             if (!greetingFlushed && pendingGreeting) {
-              // Check if this audio frame has voice energy (not silence)
               const raw = Buffer.from(data.media.payload, 'base64');
               let energy = 0;
               for (let i = 0; i < raw.length; i++) {
-                const sample = Math.abs(MULAW_DECODE[raw[i]]);
-                energy += sample;
+                energy += Math.abs(MULAW_DECODE[raw[i]]);
               }
               const avgEnergy = energy / raw.length;
-              // mulaw silence is ~0-100, speech is typically 500+
-              if (avgEnergy > 300) {
+              // Voice threshold: 400+ = real speech, filters out line noise
+              if (avgEnergy > 400) {
                 callerSpokeFrames++;
               } else {
-                callerSpokeFrames = Math.max(0, callerSpokeFrames - 1);
+                callerSpokeFrames = Math.max(0, callerSpokeFrames - 2);
               }
 
-              // Caller has spoken enough — flush the greeting
+              // Caller said hello (~300ms sustained voice) — flush greeting
               if (callerSpokeFrames >= CALLER_SPEAK_THRESHOLD) {
                 greetingFlushed = true;
+                greetingFlushTime = Date.now();
                 log(`[${callSid}] Caller spoke — flushing greeting now`);
                 let totalMulawChunks = 0;
                 for (const wavData of pendingGreeting.chunks) {
@@ -719,9 +721,19 @@ app.register(async function (app) {
                 emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
                 pendingGreeting = null;
               }
+              // DON'T forward audio to Hume yet — greeting hasn't played
+              break;
             }
 
-            // Forward caller audio to Hume (mulaw → PCM linear16)
+            // PHASE 2: After greeting, give caller time to hear it before Hume listens
+            // This prevents Hume from hearing the greeting echo and responding to itself,
+            // and gives the caller breathing room after the greeting plays
+            if (greetingFlushTime > 0 && (Date.now() - greetingFlushTime) < POST_GREETING_SILENCE_MS) {
+              // Swallow audio during the post-greeting buffer — don't send to Hume
+              break;
+            }
+
+            // PHASE 3: Normal conversation — forward caller audio to Hume
             if (humeReady && humeWs?.readyState === WebSocket.OPEN) {
               const pcm = mulawToLinear16(data.media.payload);
               humeWs.send(JSON.stringify({ type: 'audio_input', data: pcm }));
@@ -803,7 +815,7 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   log(`Port: ${PORT} | Domain: ${cleanDomain}`);
   log(`Stack: Twilio → Hume EVI (eLLM + Octave TTS) → Claude Sonnet 4.5`);
   log(`Config: ${HUME_CONFIG_ID}`);
-  log(`Voice: ${ATOM_VOICE_ID} (ATOM Jobs 220 — Male Steve Jobs ~215Hz)`);
+  log(`Voice: ${ATOM_VOICE_ID} (ATOM Jobs 250 — Male Steve Jobs ~250Hz)`);
   log(`Phone: ${TWILIO_PHONE_NUMBER}`);
   log(`Pre-warm: ENABLED — Hume connects while phone rings`);
 });

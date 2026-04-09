@@ -738,9 +738,10 @@ app.register(async function (app) {
               }
             }
 
-            // Forward ALL caller audio to Hume — EVI's vocal end-of-turn
-            // handles all pacing. No artificial delays.
-            if (humeReady && humeWs?.readyState === WebSocket.OPEN) {
+            // Only forward audio to Hume AFTER greeting has been triggered.
+            // Before hello: silence to Hume = Hume stays quiet.
+            // After hello: full audio flows to Hume for conversation.
+            if (greetingFlushed && humeReady && humeWs?.readyState === WebSocket.OPEN) {
               const pcm = mulawToLinear16(data.media.payload);
               humeWs.send(JSON.stringify({ type: 'audio_input', data: pcm }));
             }

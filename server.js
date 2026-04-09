@@ -446,9 +446,7 @@ app.register(async function (app) {
     let greetingFlushed = false;
     let pendingGreeting = null; // { chunks: [], text: '' }
     let callerSpokeFrames = 0;
-    let greetingFlushTime = 0; // timestamp when greeting was sent
-    const CALLER_SPEAK_THRESHOLD = 15; // ~300ms of sustained voice = real "hello"
-    const POST_GREETING_SILENCE_MS = 2000; // 2s after greeting before forwarding audio to Hume
+    const CALLER_SPEAK_THRESHOLD = 10; // ~200ms of sustained voice = real "hello"
 
     // ── Attach Hume event listeners to a WebSocket ───────────────────
     // This is called AFTER we have a valid humeWs reference — either
@@ -635,12 +633,11 @@ app.register(async function (app) {
                 };
                 log(`[${callSid}] Greeting buffered (${prewarmed.greetingAudioChunks.length} chunks) — waiting for caller to speak`);
 
-                // Safety: if caller doesn't speak within 5s, flush anyway (they picked up but are silent)
+                // Safety: if caller doesn't speak within 3s, flush anyway
                 setTimeout(() => {
                   if (!greetingFlushed && pendingGreeting) {
                     greetingFlushed = true;
-                    greetingFlushTime = Date.now();
-                    log(`[${callSid}] Greeting timeout — flushing after 5s silence`);
+                    log(`[${callSid}] Greeting timeout — flushing after 3s`);
                     let totalMulawChunks = 0;
                     for (const wavData of pendingGreeting.chunks) {
                       try {
@@ -657,7 +654,7 @@ app.register(async function (app) {
                     emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
                     pendingGreeting = null;
                   }
-                }, 5000);
+                }, 3000);
               }
             } else {
               // FALLBACK: Pre-warm missed or closed — connect fresh
@@ -683,7 +680,7 @@ app.register(async function (app) {
             break;
 
           case 'media':
-            // PHASE 1: Wait for caller to say hello before playing greeting
+            // Wait for caller to say hello before playing pre-buffered greeting
             if (!greetingFlushed && pendingGreeting) {
               const raw = Buffer.from(data.media.payload, 'base64');
               let energy = 0;
@@ -691,18 +688,15 @@ app.register(async function (app) {
                 energy += Math.abs(MULAW_DECODE[raw[i]]);
               }
               const avgEnergy = energy / raw.length;
-              // Voice threshold: 400+ = real speech, filters out line noise
               if (avgEnergy > 400) {
                 callerSpokeFrames++;
               } else {
-                callerSpokeFrames = Math.max(0, callerSpokeFrames - 2);
+                callerSpokeFrames = Math.max(0, callerSpokeFrames - 1);
               }
 
-              // Caller said hello (~300ms sustained voice) — flush greeting
               if (callerSpokeFrames >= CALLER_SPEAK_THRESHOLD) {
                 greetingFlushed = true;
-                greetingFlushTime = Date.now();
-                log(`[${callSid}] Caller spoke — flushing greeting now`);
+                log(`[${callSid}] Caller spoke — flushing greeting`);
                 let totalMulawChunks = 0;
                 for (const wavData of pendingGreeting.chunks) {
                   try {
@@ -721,19 +715,14 @@ app.register(async function (app) {
                 emitToFrontend(callSid, { type: 'transcript', role: 'agent', text: pendingGreeting.text, ts: Date.now() });
                 pendingGreeting = null;
               }
-              // DON'T forward audio to Hume yet — greeting hasn't played
-              break;
+              // STILL forward audio to Hume during wait — EVI needs to hear
+              // the caller to build context. EVI's own vocal end-of-turn
+              // detection handles all pacing from here.
             }
 
-            // PHASE 2: After greeting, give caller time to hear it before Hume listens
-            // This prevents Hume from hearing the greeting echo and responding to itself,
-            // and gives the caller breathing room after the greeting plays
-            if (greetingFlushTime > 0 && (Date.now() - greetingFlushTime) < POST_GREETING_SILENCE_MS) {
-              // Swallow audio during the post-greeting buffer — don't send to Hume
-              break;
-            }
-
-            // PHASE 3: Normal conversation — forward caller audio to Hume
+            // Forward ALL caller audio to Hume immediately — trust EVI's
+            // built-in prosody-based end-of-turn detection for conversation
+            // pacing. No artificial delays, no audio swallowing.
             if (humeReady && humeWs?.readyState === WebSocket.OPEN) {
               const pcm = mulawToLinear16(data.media.payload);
               humeWs.send(JSON.stringify({ type: 'audio_input', data: pcm }));

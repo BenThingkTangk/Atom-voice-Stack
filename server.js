@@ -58,6 +58,16 @@ const log = (...args) => console.log(`[ATOM] ${new Date().toISOString()}`, ...ar
 const activeCalls = new Map();
 const activeCampaigns = new Map();
 
+// ─── Call Performance Metrics Store ──────────────────────────────────────────
+// Stores per-call timing data for the performance dashboard
+const callMetricsHistory = [];
+const MAX_METRICS_HISTORY = 200; // Keep last 200 calls
+
+function recordCallMetrics(callSid, metrics) {
+  callMetricsHistory.unshift({ callSid, ...metrics, recordedAt: new Date().toISOString() });
+  if (callMetricsHistory.length > MAX_METRICS_HISTORY) callMetricsHistory.length = MAX_METRICS_HISTORY;
+}
+
 // ─── Mulaw codec (precomputed decode table) ──────────────────────────────────
 const MULAW_DECODE = new Int16Array(256);
 for (let i = 0; i < 256; i++) {
@@ -298,8 +308,12 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
   const state = { humeWs, ready: false, greetingAudioChunks: [], greetingDone: false };
 
   humeWs.on('open', () => {
-    log(`[${callSid}] Pre-warm: Hume EVI connected (${Date.now() - startTime}ms)`);
+    const connectMs = Date.now() - startTime;
+    log(`[${callSid}] Pre-warm: Hume EVI connected (${connectMs}ms)`);
     state.ready = true;
+    // Record pre-warm connect time
+    const call = activeCalls.get(callSid);
+    if (call?.perf) call.perf.humePrewarmConnectMs = connectMs;
     // Configure audio format, lock voice, inject system prompt + RAG context
     humeWs.send(JSON.stringify({
       type: 'session_settings',
@@ -323,7 +337,10 @@ function prewarmHumeEVI(callSid, firstName, companyName, product, ragContext, br
       }
       if (msg.type === 'assistant_end' && !state.greetingDone) {
         state.greetingDone = true;
-        log(`[${callSid}] Pre-warm: greeting ready (${state.greetingAudioChunks.length} chunks, ${Date.now() - startTime}ms)`);
+        const greetingMs = Date.now() - startTime;
+        log(`[${callSid}] Pre-warm: greeting ready (${state.greetingAudioChunks.length} chunks, ${greetingMs}ms)`);
+        const call = activeCalls.get(callSid);
+        if (call?.perf) call.perf.humePrewarmGreetingMs = greetingMs;
       }
     } catch {}
   });
@@ -412,6 +429,21 @@ app.post('/call', async (req, reply) => {
       emotions: [],
       metrics: { sentiment: 50, buyerIntent: 0, stage: 'discovery' },
       frontendSockets: new Set(),
+      // ── Performance timing ──
+      perf: {
+        callInitiatedAt: Date.now(),
+        humePrewarmConnectMs: null,
+        humePrewarmGreetingMs: null,
+        prewarmHit: false,
+        prewarmChunksBuffered: 0,
+        twilioStreamConnectedAt: null,
+        firstGreetingAudioAt: null,
+        greetingFlushMs: null,
+        eviTurnLatencies: [],       // ms from prospect_end → atom_first_audio
+        sambaNovaLatencies: [],     // ms per SambaNova tool call
+        transcriptionAccuracy: [],  // { raw, corrected, score }
+        errors: [],
+      },
     });
 
     // PRE-WARM: Connect to Hume NOW while the phone rings
@@ -459,6 +491,8 @@ app.register(async function (app) {
     let pendingGreeting = null; // { chunks: [], text: '' }
     let callerSpokeFrames = 0;
     const CALLER_SPEAK_THRESHOLD = 8; // ~160ms of voice before ATOM responds
+    let lastProspectEndTs = null; // for measuring EVI turn latency
+    let awaitingFirstAudioAfterTurn = false;
 
     // ── Attach Hume event listeners to a WebSocket ───────────────────
     // This is called AFTER we have a valid humeWs reference — either
@@ -477,6 +511,19 @@ app.register(async function (app) {
             if (call.campaignId) {
               emitToCampaign(call.campaignId, { type: 'call_complete', callSid, duration, ts: Date.now() });
             }
+            // Record final performance metrics for dashboard
+            recordCallMetrics(callSid, {
+              firstName: call.firstName,
+              companyName: call.companyName,
+              product: call.product,
+              duration,
+              turns: call.transcript.length,
+              sentiment: call.metrics?.sentiment,
+              buyerIntent: call.metrics?.buyerIntent,
+              stage: call.metrics?.stage,
+              perf: { ...call.perf },
+              emotionReadings: call.emotions?.length || 0,
+            });
             setTimeout(() => activeCalls.delete(callSid), 600000);
           }
         }
@@ -489,6 +536,21 @@ app.register(async function (app) {
 
           // Audio output — transcode PCM wav → mulaw and send to Twilio
           if (msg.type === 'audio_output' && msg.data && streamSid) {
+            // Measure EVI turn latency: time from prospect speech end → first ATOM audio
+            if (awaitingFirstAudioAfterTurn && lastProspectEndTs) {
+              const turnLatencyMs = Date.now() - lastProspectEndTs;
+              awaitingFirstAudioAfterTurn = false;
+              const call = activeCalls.get(callSid);
+              if (call?.perf) call.perf.eviTurnLatencies.push(turnLatencyMs);
+              log(`[${callSid}] EVI turn latency: ${turnLatencyMs}ms`);
+            }
+            // Record first greeting audio time
+            if (callSid && greetingFlushed) {
+              const call = activeCalls.get(callSid);
+              if (call?.perf && !call.perf.firstGreetingAudioAt) {
+                call.perf.firstGreetingAudioAt = Date.now();
+              }
+            }
             try {
               const chunks = wavToMulawChunks(msg.data);
               for (const chunk of chunks) {
@@ -496,6 +558,8 @@ app.register(async function (app) {
               }
             } catch (e) {
               log(`Transcode error: ${e.message}`);
+              const call = activeCalls.get(callSid);
+              if (call?.perf) call.perf.errors.push({ type: 'transcode', msg: e.message, ts: Date.now() });
             }
           }
 
@@ -519,6 +583,9 @@ app.register(async function (app) {
           // Prospect's speech + EMOTION DATA (real prosody from Hume)
           if (msg.type === 'user_message') {
             const text = msg.message?.content || '';
+            // Mark prospect speech end for EVI turn latency measurement
+            lastProspectEndTs = Date.now();
+            awaitingFirstAudioAfterTurn = true;
             log(`[${callSid}] PROSPECT: ${text.slice(0, 80)}`);
 
             // Extract Hume's prosody-based emotion scores
@@ -621,6 +688,8 @@ app.register(async function (app) {
             callSid = data.start.callSid;
             log(`[${callSid}] Stream started`);
             emitToFrontend(callSid, { type: 'call_started', ts: Date.now() });
+            // Record stream connect time
+            { const call = activeCalls.get(callSid); if (call?.perf) call.perf.twilioStreamConnectedAt = Date.now(); }
 
             // Check for pre-warmed Hume connection
             const prewarmed = prewarmedHume.get(callSid);
@@ -630,6 +699,8 @@ app.register(async function (app) {
               humeReady = prewarmed.ready;
               prewarmedHume.delete(callSid);
               log(`[${callSid}] Using pre-warmed Hume (${prewarmed.greetingAudioChunks.length} chunks, done: ${prewarmed.greetingDone})`);
+              // Record pre-warm hit
+              { const call = activeCalls.get(callSid); if (call?.perf) { call.perf.prewarmHit = true; call.perf.prewarmChunksBuffered = prewarmed.greetingAudioChunks.length; } }
 
               // Strip pre-warm listeners, attach live bridge listeners
               humeWs.removeAllListeners('message');
@@ -793,11 +864,12 @@ app.get('/call/:callSid/recording', async (req) => {
 // ─── SambaNova fast tool execution (async, off voice loop) ──────────────────
 // GPT-4o / SambaNova handles: CRM writes, demo bookings, JSON tools, post-call summaries
 // Isolated from voice loop so tool execution never adds latency to ATOM's responses
-async function executeSambaNovaToolCall(toolName, params) {
+async function executeSambaNovaToolCall(toolName, params, callSid) {
   if (!SAMBANOVA_API_KEY) {
     log(`[SambaNova] API key not set, falling back to OpenAI for tool: ${toolName}`);
     return executeOpenAIToolCall(toolName, params);
   }
+  const sambaStart = Date.now();
   try {
     const res = await fetch(`${SAMBANOVA_BASE_URL}/chat/completions`, {
       method: 'POST',
@@ -824,9 +896,17 @@ async function executeSambaNovaToolCall(toolName, params) {
       return executeOpenAIToolCall(toolName, params);
     }
     const data = await res.json();
+    const sambaMs = Date.now() - sambaStart;
+    log(`[SambaNova] ${toolName} completed in ${sambaMs}ms`);
+    // Record SambaNova latency for the call if callSid provided
+    if (callSid) {
+      const call = activeCalls.get(callSid);
+      if (call?.perf) call.perf.sambaNovaLatencies.push({ tool: toolName, ms: sambaMs, engine: 'sambanova' });
+    }
     return data.choices?.[0]?.message?.content || '{}';
   } catch (err) {
-    log(`[SambaNova] Error: ${err.message} — falling back to OpenAI`);
+    const sambaMs = Date.now() - sambaStart;
+    log(`[SambaNova] Error after ${sambaMs}ms: ${err.message} — falling back to OpenAI`);
     return executeOpenAIToolCall(toolName, params);
   }
 }
@@ -874,6 +954,78 @@ app.post('/call/:callSid/summary-ai', async (req, reply) => {
   });
   return { callSid: req.params.callSid, summary };
 });
+
+// ─── Performance Dashboard API ──────────────────────────────────────────────
+app.get('/perf/metrics', async () => {
+  // Return last 200 calls with full perf data
+  return {
+    bridge: {
+      version: '7.0',
+      voiceId: ATOM_VOICE_ID,
+      humeConfig: HUME_CONFIG_ID,
+      sambanova: !!SAMBANOVA_API_KEY,
+      uptime: Math.round(process.uptime()),
+      activeCalls: activeCalls.size,
+    },
+    calls: callMetricsHistory,
+    aggregates: computeAggregates(),
+  };
+});
+
+app.get('/perf/live', async () => {
+  // Return perf data for currently active calls
+  const live = [];
+  for (const [sid, call] of activeCalls) {
+    live.push({
+      callSid: sid,
+      firstName: call.firstName,
+      companyName: call.companyName,
+      duration: call.endTime ? Math.round((call.endTime - call.startTime) / 1000) : Math.round((Date.now() - call.startTime) / 1000),
+      perf: call.perf,
+      metrics: call.metrics,
+      transcriptCount: call.transcript?.length || 0,
+      emotionCount: call.emotions?.length || 0,
+    });
+  }
+  return { activeCalls: live, ts: new Date().toISOString() };
+});
+
+function computeAggregates() {
+  if (callMetricsHistory.length === 0) return null;
+  const calls = callMetricsHistory;
+  const prewarmHits = calls.filter(c => c.perf?.prewarmHit).length;
+  const allEviLatencies = calls.flatMap(c => c.perf?.eviTurnLatencies || []);
+  const allSambaLatencies = calls.flatMap(c => (c.perf?.sambaNovaLatencies || []).map(s => s.ms));
+  const allPrewarmMs = calls.map(c => c.perf?.humePrewarmConnectMs).filter(Boolean);
+  const allGreetingMs = calls.map(c => c.perf?.humePrewarmGreetingMs).filter(Boolean);
+  const allDurations = calls.map(c => c.duration).filter(Boolean);
+  const allErrors = calls.reduce((acc, c) => acc + (c.perf?.errors?.length || 0), 0);
+
+  const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+  const p50 = arr => { if (!arr.length) return null; const s = [...arr].sort((a,b) => a-b); return s[Math.floor(s.length * 0.5)]; };
+  const p95 = arr => { if (!arr.length) return null; const s = [...arr].sort((a,b) => a-b); return s[Math.floor(s.length * 0.95)]; };
+
+  return {
+    totalCalls: calls.length,
+    prewarmHitRate: calls.length ? Math.round((prewarmHits / calls.length) * 100) : 0,
+    eviTurnLatency: {
+      avg: avg(allEviLatencies),
+      p50: p50(allEviLatencies),
+      p95: p95(allEviLatencies),
+      count: allEviLatencies.length,
+    },
+    sambaNovaLatency: {
+      avg: avg(allSambaLatencies),
+      p50: p50(allSambaLatencies),
+      p95: p95(allSambaLatencies),
+      count: allSambaLatencies.length,
+    },
+    humePrewarmConnect: { avg: avg(allPrewarmMs), p95: p95(allPrewarmMs) },
+    humeGreetingGenerate: { avg: avg(allGreetingMs), p95: p95(allGreetingMs) },
+    callDuration: { avg: avg(allDurations), total: allDurations.reduce((a,b) => a+b, 0) },
+    totalErrors: allErrors,
+  };
+}
 
 // ─── Campaign endpoints ──────────────────────────────────────────────────────
 app.get('/calls', async () => ({

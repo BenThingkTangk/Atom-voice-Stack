@@ -39,8 +39,8 @@ const {
   DOMAIN,
 } = process.env;
 
-// LOCKED: ATOM Jobs 250 voice — 863032e6-762b-4397-8ebd-ca3581fbc385
-const ATOM_VOICE_ID = HUME_VOICE_ID || '863032e6-762b-4397-8ebd-ca3581fbc385';
+// LOCKED: ATOM Voice — 532730f8-de27-49aa-9d07-4c66729ef678
+const ATOM_VOICE_ID = HUME_VOICE_ID || '532730f8-de27-49aa-9d07-4c66729ef678';
 
 // SambaNova fast inference endpoint for tool calls / structured output
 const SAMBANOVA_BASE_URL = 'https://api.sambanova.ai/v1';

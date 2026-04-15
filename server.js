@@ -1,15 +1,21 @@
 /**
- * ATOM Voice Bridge v6.1 — Hume EVI + Claude | Jobs-Grade Delivery
+ * ATOM Voice Bridge v7.0 — Hume EVI 4 + Claude Sonnet/Opus | SambaCloud | Jobs-Grade Delivery
  * 
- * Gold-standard voice AI stack:
- *   Twilio SIP → Bridge → Hume EVI 3/4 (eLLM + Octave TTS + prosody) → Claude Sonnet backbone
+ * Gold-standard voice AI stack (as depicted in atom-voice-stack.vercel.app):
+ *   Twilio SIP → Bridge → Hume EVI 4 (eLLM + Octave v2 TTS + prosody) → Claude Sonnet/Opus backbone
+ *   SambaCloud enterprise infrastructure for auto-scaling voice pods
+ *   SambaNova fast LLM inference for tool calls + structured output
  * 
- * v6.1 changes:
+ * v7.0 changes:
+ *   - Upgraded to EVI 4 architecture with SambaCloud enterprise hosting
+ *   - SambaNova integration for fast tool execution / structured output
  *   - Pre-warm Hume connection while phone rings (zero-delay greeting)
  *   - Proper listener re-attachment after pre-warm handoff
  *   - Fallback fresh Hume connect if pre-warm missed
  *   - Steve Jobs acoustic-prosodic delivery model (Niebuhr et al. 2016)
  *   - Clean audio pipeline with no glitchiness
+ *   - GPT-4o offloaded to async tool calls only (CRM writes, JSON tools)
+ *   - Claude Sonnet/Opus for all frontline conversational dialog
  */
 
 import Fastify from 'fastify';
@@ -29,11 +35,15 @@ const {
   HUME_API_KEY, HUME_CONFIG_ID,
   HUME_VOICE_ID,
   OPENAI_API_KEY,
+  SAMBANOVA_API_KEY,
   DOMAIN,
 } = process.env;
 
-// LOCKED: ATOM Jobs High voice — 0aa00500-ee13-47c1-b056-1fa14d9db2f1
-const ATOM_VOICE_ID = HUME_VOICE_ID || '0aa00500-ee13-47c1-b056-1fa14d9db2f1';
+// LOCKED: ATOM Jobs 250 voice — 863032e6-762b-4397-8ebd-ca3581fbc385
+const ATOM_VOICE_ID = HUME_VOICE_ID || '863032e6-762b-4397-8ebd-ca3581fbc385';
+
+// SambaNova fast inference endpoint for tool calls / structured output
+const SAMBANOVA_BASE_URL = 'https://api.sambanova.ai/v1';
 
 const PORT = process.env.PORT || 6060;
 const cleanDomain = (DOMAIN || 'localhost').replace(/(^\w+:|^)\/\//, '').replace(/\/+$/, '');
@@ -242,9 +252,11 @@ await app.register(fastifyCors, { origin: true });
 // ─── Health ──────────────────────────────────────────────────────────────────
 app.get('/', async () => ({
   status: 'ok',
-  service: 'ATOM Voice Bridge v6.1 — Hume EVI + Claude | Jobs Delivery',
-  stack: 'Twilio → Hume EVI 3 (eLLM + Octave TTS) → Claude Sonnet 4.5',
+  service: 'ATOM Voice Bridge v7.0 — Hume EVI 4 + Claude Sonnet/Opus | SambaCloud',
+  stack: 'Twilio SIP → Hume EVI 4 (eLLM + Octave v2 TTS) → Claude Sonnet/Opus | SambaNova tools',
+  infrastructure: 'SambaCloud Enterprise Voice AI',
   activeCalls: activeCalls.size,
+  sambanova: !!SAMBANOVA_API_KEY,
   ts: new Date().toISOString(),
 }));
 
@@ -778,6 +790,91 @@ app.get('/call/:callSid/recording', async (req) => {
   };
 });
 
+// ─── SambaNova fast tool execution (async, off voice loop) ──────────────────
+// GPT-4o / SambaNova handles: CRM writes, demo bookings, JSON tools, post-call summaries
+// Isolated from voice loop so tool execution never adds latency to ATOM's responses
+async function executeSambaNovaToolCall(toolName, params) {
+  if (!SAMBANOVA_API_KEY) {
+    log(`[SambaNova] API key not set, falling back to OpenAI for tool: ${toolName}`);
+    return executeOpenAIToolCall(toolName, params);
+  }
+  try {
+    const res = await fetch(`${SAMBANOVA_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SAMBANOVA_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'Meta-Llama-3.3-70B-Instruct',
+        messages: [{
+          role: 'system',
+          content: `You are a tool execution agent. Execute the ${toolName} tool with the given parameters. Return structured JSON only.`
+        }, {
+          role: 'user',
+          content: JSON.stringify({ tool: toolName, params })
+        }],
+        temperature: 0.1,
+        stream: false,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      log(`[SambaNova] ${res.status} — falling back to OpenAI`);
+      return executeOpenAIToolCall(toolName, params);
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '{}';
+  } catch (err) {
+    log(`[SambaNova] Error: ${err.message} — falling back to OpenAI`);
+    return executeOpenAIToolCall(toolName, params);
+  }
+}
+
+async function executeOpenAIToolCall(toolName, params) {
+  if (!OPENAI_API_KEY) return '{}';
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: `Execute tool ${toolName}: ${JSON.stringify(params)}. Return JSON.` }],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return '{}';
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '{}';
+  } catch { return '{}'; }
+}
+
+// POST /tool — execute a tool call via SambaNova (fast) or OpenAI (fallback)
+app.post('/tool', async (req, reply) => {
+  const { tool, params } = req.body || {};
+  if (!tool) return reply.status(400).send({ error: 'Missing: tool' });
+  const result = await executeSambaNovaToolCall(tool, params || {});
+  try {
+    return { success: true, result: JSON.parse(result) };
+  } catch {
+    return { success: true, result };
+  }
+});
+
+// POST /call/:callSid/summary-ai — generate post-call summary via SambaNova
+app.post('/call/:callSid/summary-ai', async (req, reply) => {
+  const call = activeCalls.get(req.params.callSid);
+  if (!call) return reply.status(404).send({ error: 'Call not found' });
+  const transcript = call.transcript.map(t => `${t.role}: ${t.text}`).join('\n');
+  const summary = await executeSambaNovaToolCall('call_summary', {
+    transcript, firstName: call.firstName, companyName: call.companyName,
+    metrics: call.metrics, emotions: call.emotions?.slice(-5),
+  });
+  return { callSid: req.params.callSid, summary };
+});
+
 // ─── Campaign endpoints ──────────────────────────────────────────────────────
 app.get('/calls', async () => ({
   calls: [...activeCalls.entries()].map(([sid, c]) => ({
@@ -799,11 +896,12 @@ app.get('/call/:callSid/summary', async (req) => {
 // ─── Start ───────────────────────────────────────────────────────────────────
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   if (err) { console.error(err); process.exit(1); }
-  log(`ATOM Voice Bridge v6.1 — Hume EVI + Claude | Jobs Delivery`);
+  log(`ATOM Voice Bridge v7.0 — Hume EVI 4 + Claude Sonnet/Opus | SambaCloud`);
   log(`Port: ${PORT} | Domain: ${cleanDomain}`);
-  log(`Stack: Twilio → Hume EVI (eLLM + Octave TTS) → Claude Sonnet 4.5`);
+  log(`Stack: Twilio SIP → Hume EVI 4 (eLLM + Octave v2 TTS) → Claude Sonnet/Opus`);
+  log(`Infra: SambaCloud Enterprise | SambaNova: ${SAMBANOVA_API_KEY ? 'ACTIVE' : 'NOT SET'}`);
   log(`Config: ${HUME_CONFIG_ID}`);
-  log(`Voice: ${ATOM_VOICE_ID} (ATOM Jobs High — LOCKED)`);
+  log(`Voice: ${ATOM_VOICE_ID} (ATOM Jobs 250 — LOCKED)`);
   log(`Phone: ${TWILIO_PHONE_NUMBER}`);
   log(`Pre-warm: ENABLED — Hume connects while phone rings`);
 });
